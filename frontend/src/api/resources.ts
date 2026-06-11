@@ -2,7 +2,7 @@ import { api } from "./client";
 import { localResources } from "./localResources";
 import type { Assignment, Participant, Results, Session, TeamsResponse, UseCase } from "../types";
 
-const useLocalResources = import.meta.env.VITE_DATA_MODE === "local" || (import.meta.env.PROD && import.meta.env.VITE_DATA_MODE !== "api");
+const useLocalResources = import.meta.env.VITE_DATA_MODE === "local";
 
 const apiResources = {
   sessions: {

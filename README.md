@@ -62,15 +62,20 @@ El repositorio incluye configuracion para desplegar frontend y API en Vercel:
 
 En Vercel importa el repositorio desde GitHub y usa la raiz del proyecto. No selecciones `frontend` como Root Directory.
 
-Por defecto, el build de produccion usa almacenamiento local del navegador (`localStorage`) para que la app funcione en Vercel sin base de datos. Esto permite crear sesiones, participantes, casos, equipos, sorteos y resultados en modo demo.
+Por defecto, el build de produccion usa la API del backend. Si no configuras `DATABASE_URL`, el backend guarda en SQLite temporal dentro de Vercel. Esto permite crear sesiones, participantes, casos, equipos, sorteos y resultados sin configurar una base de datos externa.
 
-Los datos quedan guardados solo en el navegador/dispositivo donde se usa la app.
+Importante: en Vercel ese almacenamiento temporal puede perderse al redeploy o cuando la funcion serverless cambia de instancia. Sirve para demo, pero no para persistencia permanente.
 
-Para volver a usar API y persistencia real, configura estas variables en Vercel:
+Para persistencia real, configura PostgreSQL con esta variable:
 
 ```env
-VITE_DATA_MODE=api
 DATABASE_URL=postgresql://usuario:password@host:puerto/database
+```
+
+Si quieres volver al modo sin backend y guardar solo en el navegador, configura:
+
+```env
+VITE_DATA_MODE=local
 ```
 
 ## Importacion
