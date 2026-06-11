@@ -170,6 +170,13 @@ def test_evaluation_flow_registers_judge_scores_and_ranking():
     evaluation = opened.json()
     assert evaluation["status"] == "open"
     assert len(evaluation["criteria"]) == 5
+    assert [criterion["name"] for criterion in evaluation["criteria"]] == [
+        "Presentation & Communication",
+        "Usability & Desing",
+        "Innovation",
+        "Impact and Relevance",
+        "Technical Quiality",
+    ]
 
     public = client.get(f"/judge/{evaluation['token']}").json()
     judge = client.post(

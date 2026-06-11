@@ -5,6 +5,14 @@ import type { Judge, JudgeScore, PublicEvaluation, Team } from "../types";
 
 type ScoreDraft = Record<string, number>;
 
+const scoreLabels: Record<number, string> = {
+  1: "Very Bad",
+  2: "Insufficient",
+  3: "Acceptable",
+  4: "Good",
+  5: "Very Good",
+};
+
 export function JudgePage({ token }: { token: string }) {
   const [evaluation, setEvaluation] = useState<PublicEvaluation | null>(null);
   const [judge, setJudge] = useState<Judge | null>(null);
@@ -154,7 +162,9 @@ export function JudgePage({ token }: { token: string }) {
                   <label key={criterion.id} className="grid gap-2 font-bold text-slate-700">
                     <span className="flex items-center justify-between">
                       {criterion.name}
-                      <strong className="text-teal-800">{draft[String(criterion.id)] ?? 3}</strong>
+                      <strong className="text-teal-800">
+                        {draft[String(criterion.id)] ?? 3} - {scoreLabels[draft[String(criterion.id)] ?? 3]}
+                      </strong>
                     </span>
                     <input
                       type="range"
@@ -163,6 +173,13 @@ export function JudgePage({ token }: { token: string }) {
                       value={draft[String(criterion.id)] ?? 3}
                       onChange={(event) => setDraft((current) => ({ ...current, [String(criterion.id)]: Number(event.target.value) }))}
                     />
+                    <div className="grid grid-cols-5 gap-1 text-center text-[11px] font-black uppercase tracking-[0.04em] text-slate-400">
+                      <span>1 Very Bad</span>
+                      <span>2 Insufficient</span>
+                      <span>3 Acceptable</span>
+                      <span>4 Good</span>
+                      <span>5 Very Good</span>
+                    </div>
                   </label>
                 ))}
                 <textarea className="input min-h-24" placeholder="Comentario opcional" value={comment} onChange={(event) => setComment(event.target.value)} />

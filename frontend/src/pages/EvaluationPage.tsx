@@ -138,7 +138,7 @@ export function EvaluationPage({ session }: { session: Session }) {
                 {evaluation.criteria.map((criterion) => (
                   <li key={criterion.id} className="flex items-center justify-between rounded-lg bg-slate-50 px-3 py-2">
                     <span className="font-bold text-slate-800">{criterion.name}</span>
-                    <span className="text-sm font-black text-teal-800">1-{criterion.max_score}</span>
+                    <span className="text-sm font-black text-teal-800">1 Very Bad - {criterion.max_score} Very Good</span>
                   </li>
                 ))}
               </ul>

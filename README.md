@@ -121,6 +121,22 @@ React -> /api/sessions/{id}/teams/insights -> FastAPI -> OpenAI
 
 Cada sesion puede abrir una evaluacion independiente para la fecha del IA Friday.
 
+Criterios de evaluacion:
+
+- Presentation & Communication
+- Usability & Desing
+- Innovation
+- Impact and Relevance
+- Technical Quiality
+
+Escala:
+
+- 1: Very Bad
+- 2: Insufficient
+- 3: Acceptable
+- 4: Good
+- 5: Very Good
+
 Flujo:
 
 1. Al entrar al dashboard de una sesion, la app prepara un QR de jurados.

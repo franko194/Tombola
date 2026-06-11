@@ -35,11 +35,11 @@ from app.schemas import (
 router = APIRouter(tags=["evaluation"])
 
 DEFAULT_CRITERIA = [
-    ("Innovacion", 1.0),
-    ("Impacto de negocio", 1.0),
-    ("Viabilidad", 1.0),
-    ("Uso de IA", 1.0),
-    ("Claridad del pitch", 1.0),
+    ("Presentation & Communication", 1.0),
+    ("Usability & Desing", 1.0),
+    ("Innovation", 1.0),
+    ("Impact and Relevance", 1.0),
+    ("Technical Quiality", 1.0),
 ]
 
 
@@ -59,9 +59,19 @@ def get_evaluation_by_token(db: Session, token: str) -> SessionEvaluation:
 
 
 def ensure_default_criteria(db: Session, session_id: int) -> None:
-    existing = db.query(EvaluationCriterion).filter(EvaluationCriterion.session_id == session_id).count()
-    if existing:
-        return
+    existing_criteria = db.query(EvaluationCriterion).filter(EvaluationCriterion.session_id == session_id).order_by(EvaluationCriterion.order).all()
+    if existing_criteria:
+        existing_scores = db.query(TeamScore).filter(TeamScore.session_id == session_id).count()
+        if existing_scores:
+            return
+        expected_names = [name for name, _weight in DEFAULT_CRITERIA]
+        current_names = [criterion.name for criterion in existing_criteria]
+        if current_names == expected_names:
+            return
+        for criterion in existing_criteria:
+            db.delete(criterion)
+        db.flush()
+
     for index, (name, weight) in enumerate(DEFAULT_CRITERIA, start=1):
         db.add(EvaluationCriterion(session_id=session_id, name=name, weight=weight, max_score=5, order=index, active=True))
 
