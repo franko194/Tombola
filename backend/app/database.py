@@ -3,7 +3,7 @@ import os
 from pathlib import Path
 import tempfile
 
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
 from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
 
 IS_VERCEL = bool(os.environ.get("VERCEL"))
@@ -14,9 +14,12 @@ if not IS_VERCEL:
 
 default_sqlite_path = Path(tempfile.gettempdir()) / "ia_friday.db" if IS_VERCEL else DATA_DIR / "ia_friday.db"
 DATABASE_URL = os.environ.get("DATABASE_URL", f"sqlite:///{default_sqlite_path}")
+if DATABASE_URL.startswith("postgres://"):
+    DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
 connect_args = {"check_same_thread": False} if DATABASE_URL.startswith("sqlite") else {}
+engine_options = {"connect_args": connect_args, "pool_pre_ping": True}
 
-engine = create_engine(DATABASE_URL, connect_args=connect_args)
+engine = create_engine(DATABASE_URL, **engine_options)
 SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False)
 _db_initialized = False
 
@@ -46,6 +49,13 @@ def init_db() -> None:
 def ensure_db_initialized() -> None:
     if not _db_initialized:
         init_db()
+
+
+def check_database() -> dict[str, str]:
+    ensure_db_initialized()
+    with engine.connect() as connection:
+        connection.execute(text("SELECT 1"))
+    return {"status": "ok", "dialect": engine.dialect.name}
 
 
 def migrate_assignments_allow_repeated_use_cases() -> None:

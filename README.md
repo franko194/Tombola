@@ -6,7 +6,7 @@ Aplicacion web reusable para sesiones semanales de IA Friday. Permite registrar 
 
 - Frontend: React, TypeScript, Vite, TailwindCSS
 - Backend: Python, FastAPI, SQLAlchemy
-- Base de datos: SQLite
+- Base de datos: SQLite local o PostgreSQL en produccion
 
 ## Backend
 
@@ -28,6 +28,12 @@ Health check:
 
 ```txt
 http://127.0.0.1:8000/health
+```
+
+Health check de base de datos:
+
+```txt
+http://127.0.0.1:8000/health/db
 ```
 
 ## Frontend
@@ -69,7 +75,21 @@ Importante: en Vercel ese almacenamiento temporal puede perderse al redeploy o c
 Para persistencia real, configura PostgreSQL con esta variable:
 
 ```env
-DATABASE_URL=postgresql://usuario:password@host:puerto/database
+DATABASE_URL=postgresql://usuario:password@host:puerto/database?sslmode=require
+```
+
+Con esto cualquier PC que abra la URL de Vercel vera los mismos datos, porque React llama a la API en `/api` y FastAPI guarda todo en PostgreSQL.
+
+Despues de configurar `DATABASE_URL`, haz un redeploy y prueba:
+
+```txt
+https://tu-dominio.vercel.app/api/health/db
+```
+
+Debe responder algo como:
+
+```json
+{"status":"ok","dialect":"postgresql"}
 ```
 
 Si quieres volver al modo sin backend y guardar solo en el navegador, configura:
