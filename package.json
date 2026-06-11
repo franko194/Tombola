@@ -1,9 +1,9 @@
 {
   "scripts": {
-    "install:frontend": "cd frontend && npm.cmd install",
+    "install:frontend": "cd frontend && npm install",
     "backend": "cd backend && python -m uvicorn app.main:app --host 127.0.0.1 --port 8001 --reload",
-    "frontend": "cd frontend && npm.cmd run dev",
-    "build": "cd frontend && npm.cmd run build",
+    "frontend": "cd frontend && npm run dev",
+    "build": "cd frontend && npm run build",
     "test:backend": "cd backend && python -m pytest tests -v"
   }
 }

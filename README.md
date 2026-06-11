@@ -52,6 +52,24 @@ URL local:
 http://127.0.0.1:5173
 ```
 
+## Deploy en Vercel
+
+El repositorio incluye configuracion para desplegar frontend y API en Vercel:
+
+- Frontend: React/Vite desde `frontend/`.
+- API: FastAPI como Python Function desde `api/index.py`.
+- Configuracion: `vercel.json` en la raiz.
+
+En Vercel importa el repositorio desde GitHub y usa la raiz del proyecto. No selecciones `frontend` como Root Directory.
+
+Para persistencia real configura una base PostgreSQL y agrega esta variable en Vercel:
+
+```env
+DATABASE_URL=postgresql://usuario:password@host:puerto/database
+```
+
+Si no configuras `DATABASE_URL`, Vercel usara SQLite temporal en `/tmp`; sirve para demo, pero los datos pueden perderse entre ejecuciones.
+
 ## Importacion
 
 CSV o Excel deben incluir estas columnas:
