@@ -3,6 +3,22 @@ import { useEffect, useMemo, useState } from "react";
 import { resources } from "../api/resources";
 import type { Evaluation, Session } from "../types";
 
+function buildJudgeUrl(token?: string, fallbackUrl?: string) {
+  if (!token) return fallbackUrl ?? "";
+  const configuredUrl = import.meta.env.VITE_PUBLIC_APP_URL?.replace(/\/$/, "");
+  const baseUrl = configuredUrl || window.location.origin;
+  return `${baseUrl}/judge/${token}`;
+}
+
+function isLocalUrl(url: string) {
+  try {
+    const hostname = new URL(url).hostname;
+    return hostname === "localhost" || hostname === "127.0.0.1" || hostname === "::1";
+  } catch {
+    return false;
+  }
+}
+
 export function EvaluationPage({ session }: { session: Session }) {
   const [evaluation, setEvaluation] = useState<Evaluation | null>(null);
   const [loading, setLoading] = useState(false);
@@ -21,10 +37,14 @@ export function EvaluationPage({ session }: { session: Session }) {
     void load();
   }, [session.id]);
 
+  const judgeUrl = useMemo(() => buildJudgeUrl(evaluation?.token, evaluation?.judge_url), [evaluation?.judge_url, evaluation?.token]);
+
   const qrUrl = useMemo(() => {
-    if (!evaluation?.judge_url) return "";
-    return `https://api.qrserver.com/v1/create-qr-code/?size=260x260&data=${encodeURIComponent(evaluation.judge_url)}`;
-  }, [evaluation?.judge_url]);
+    if (!judgeUrl) return "";
+    return `https://api.qrserver.com/v1/create-qr-code/?size=260x260&data=${encodeURIComponent(judgeUrl)}`;
+  }, [judgeUrl]);
+
+  const qrNeedsPublicUrl = judgeUrl ? isLocalUrl(judgeUrl) : false;
 
   async function openEvaluation() {
     try {
@@ -51,8 +71,8 @@ export function EvaluationPage({ session }: { session: Session }) {
   }
 
   async function copyLink() {
-    if (!evaluation?.judge_url) return;
-    await navigator.clipboard.writeText(evaluation.judge_url);
+    if (!judgeUrl) return;
+    await navigator.clipboard.writeText(judgeUrl);
   }
 
   return (
@@ -98,7 +118,12 @@ export function EvaluationPage({ session }: { session: Session }) {
               <div className="mt-4 grid place-items-center rounded-lg bg-white p-4">
                 {qrUrl ? <img src={qrUrl} alt="QR de evaluacion para jurados" width={260} height={260} /> : null}
               </div>
-              <p className="mt-3 break-all rounded-lg bg-slate-50 p-3 text-sm font-bold text-slate-600">{evaluation.judge_url}</p>
+              <p className="mt-3 break-all rounded-lg bg-slate-50 p-3 text-sm font-bold text-slate-600">{judgeUrl}</p>
+              {qrNeedsPublicUrl ? (
+                <p className="mt-3 rounded-lg bg-amber-50 p-3 text-sm font-bold text-amber-800">
+                  Este QR usa localhost. Para abrirlo desde otro dispositivo, usa la URL desplegada en Vercel o configura VITE_PUBLIC_APP_URL.
+                </p>
+              ) : null}
               <button className="btn-secondary mt-3 w-full" onClick={() => void copyLink()}>
                 <Clipboard size={18} />
                 Copiar link

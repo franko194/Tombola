@@ -4,6 +4,22 @@ import { resources } from "../api/resources";
 import { MetricCard } from "../components/MetricCard";
 import type { Evaluation, PageKey, Participant, Session, Team, UseCase } from "../types";
 
+function buildJudgeUrl(token?: string, fallbackUrl?: string) {
+  if (!token) return fallbackUrl ?? "";
+  const configuredUrl = import.meta.env.VITE_PUBLIC_APP_URL?.replace(/\/$/, "");
+  const baseUrl = configuredUrl || window.location.origin;
+  return `${baseUrl}/judge/${token}`;
+}
+
+function isLocalUrl(url: string) {
+  try {
+    const hostname = new URL(url).hostname;
+    return hostname === "localhost" || hostname === "127.0.0.1" || hostname === "::1";
+  } catch {
+    return false;
+  }
+}
+
 export function DashboardPage({ session, onPageChange }: { session: Session; onPageChange: (page: PageKey) => void }) {
   const [participants, setParticipants] = useState<Participant[]>([]);
   const [useCases, setUseCases] = useState<UseCase[]>([]);
@@ -23,14 +39,18 @@ export function DashboardPage({ session, onPageChange }: { session: Session; onP
       .catch((err) => setEvaluationError((err as Error).message));
   }, [session.id]);
 
+  const judgeUrl = useMemo(() => buildJudgeUrl(evaluation?.token, evaluation?.judge_url), [evaluation?.judge_url, evaluation?.token]);
+
   const qrUrl = useMemo(() => {
-    if (!evaluation?.judge_url) return "";
-    return `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(evaluation.judge_url)}`;
-  }, [evaluation?.judge_url]);
+    if (!judgeUrl) return "";
+    return `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(judgeUrl)}`;
+  }, [judgeUrl]);
+
+  const qrNeedsPublicUrl = judgeUrl ? isLocalUrl(judgeUrl) : false;
 
   async function copyJudgeLink() {
-    if (!evaluation?.judge_url) return;
-    await navigator.clipboard.writeText(evaluation.judge_url);
+    if (!judgeUrl) return;
+    await navigator.clipboard.writeText(judgeUrl);
   }
 
   const next =
@@ -78,10 +98,15 @@ export function DashboardPage({ session, onPageChange }: { session: Session; onP
             <p className="mt-2 max-w-2xl font-medium text-slate-600">
               Comparte este QR desde el inicio. Los jurados pueden registrarse antes de abrir la votacion y quedaran asociados a esta fecha.
             </p>
-            {evaluation?.judge_url ? <p className="mt-3 break-all rounded-lg bg-slate-50 p-3 text-sm font-bold text-slate-600">{evaluation.judge_url}</p> : null}
+            {judgeUrl ? <p className="mt-3 break-all rounded-lg bg-slate-50 p-3 text-sm font-bold text-slate-600">{judgeUrl}</p> : null}
+            {qrNeedsPublicUrl ? (
+              <p className="mt-3 rounded-lg bg-amber-50 p-3 text-sm font-bold text-amber-800">
+                Este QR usa localhost. Para escanearlo desde un celular, abre la app desplegada en Vercel o configura VITE_PUBLIC_APP_URL con una URL publica.
+              </p>
+            ) : null}
             {evaluationError ? <p className="mt-3 rounded-lg bg-red-50 p-3 font-semibold text-red-700">{evaluationError}</p> : null}
             <div className="mt-3 flex flex-wrap gap-2">
-              <button className="btn-secondary" onClick={() => void copyJudgeLink()} disabled={!evaluation?.judge_url}>
+              <button className="btn-secondary" onClick={() => void copyJudgeLink()} disabled={!judgeUrl}>
                 <Clipboard size={18} />
                 Copiar link
               </button>

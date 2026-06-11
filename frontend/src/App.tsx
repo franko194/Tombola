@@ -13,19 +13,25 @@ import type { PageKey, Session } from "./types";
 
 export default function App() {
   const judgeMatch = window.location.pathname.match(/^\/judge\/([^/]+)/);
+  const judgeToken = judgeMatch ? decodeURIComponent(judgeMatch[1]) : null;
   const [session, setSession] = useState<Session | null>(null);
   const [page, setPage] = useState<PageKey>("dashboard");
 
-  if (judgeMatch) {
-    return <JudgePage token={decodeURIComponent(judgeMatch[1])} />;
-  }
-
   useEffect(() => {
+    if (judgeToken) return;
     const saved = window.localStorage.getItem("ia-friday-session");
     if (saved) {
-      setSession(JSON.parse(saved) as Session);
+      try {
+        setSession(JSON.parse(saved) as Session);
+      } catch {
+        window.localStorage.removeItem("ia-friday-session");
+      }
     }
-  }, []);
+  }, [judgeToken]);
+
+  if (judgeToken) {
+    return <JudgePage token={judgeToken} />;
+  }
 
   function selectSession(next: Session) {
     setSession(next);

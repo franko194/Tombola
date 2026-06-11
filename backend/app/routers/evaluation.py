@@ -1,7 +1,7 @@
 import os
 import secrets
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
@@ -43,12 +43,22 @@ DEFAULT_CRITERIA = [
 ]
 
 
-def public_base_url() -> str:
-    return os.environ.get("PUBLIC_APP_URL", "https://tombola-rust.vercel.app").rstrip("/")
+def public_base_url(request: Request | None = None) -> str:
+    configured_url = os.environ.get("PUBLIC_APP_URL")
+    if configured_url:
+        return configured_url.rstrip("/")
+    if request:
+        forwarded_proto = request.headers.get("x-forwarded-proto")
+        forwarded_host = request.headers.get("x-forwarded-host")
+        host = forwarded_host or request.headers.get("host")
+        if host:
+            scheme = forwarded_proto or request.url.scheme or "https"
+            return f"{scheme}://{host}".rstrip("/")
+    return "https://tombola-rust.vercel.app"
 
 
-def build_judge_url(token: str) -> str:
-    return f"{public_base_url()}/judge/{token}"
+def build_judge_url(token: str, request: Request | None = None) -> str:
+    return f"{public_base_url(request)}/judge/{token}"
 
 
 def get_evaluation_by_token(db: Session, token: str) -> SessionEvaluation:
@@ -137,7 +147,7 @@ def serialize_session_judges(db: Session, session_id: int) -> list[SessionJudgeO
     return output
 
 
-def serialize_evaluation(db: Session, evaluation: SessionEvaluation) -> EvaluationOut:
+def serialize_evaluation(db: Session, evaluation: SessionEvaluation, request: Request | None = None) -> EvaluationOut:
     session = db.get(SessionModel, evaluation.session_id)
     if not session:
         raise HTTPException(status_code=404, detail="Session not found")
@@ -146,7 +156,7 @@ def serialize_evaluation(db: Session, evaluation: SessionEvaluation) -> Evaluati
         session=session,
         token=evaluation.token,
         status=evaluation.status,
-        judge_url=build_judge_url(evaluation.token),
+        judge_url=build_judge_url(evaluation.token, request),
         criteria=serialize_criteria(db, evaluation.session_id),
         judges=serialize_session_judges(db, evaluation.session_id),
         ranking=build_ranking(db, evaluation.session_id),
@@ -168,15 +178,15 @@ def get_or_create_evaluation(db: Session, session_id: int, status: str = "prepar
 
 
 @router.post("/sessions/{session_id}/evaluation/prepare", response_model=EvaluationOut)
-def prepare_evaluation(session_id: int, db: Session = Depends(get_db)) -> EvaluationOut:
+def prepare_evaluation(session_id: int, request: Request, db: Session = Depends(get_db)) -> EvaluationOut:
     evaluation = get_or_create_evaluation(db, session_id, "prepared")
     db.commit()
     db.refresh(evaluation)
-    return serialize_evaluation(db, evaluation)
+    return serialize_evaluation(db, evaluation, request)
 
 
 @router.post("/sessions/{session_id}/evaluation/open", response_model=EvaluationOut)
-def open_evaluation(session_id: int, db: Session = Depends(get_db)) -> EvaluationOut:
+def open_evaluation(session_id: int, request: Request, db: Session = Depends(get_db)) -> EvaluationOut:
     session = db.get(SessionModel, session_id)
     if not session:
         raise HTTPException(status_code=404, detail="Session not found")
@@ -188,11 +198,11 @@ def open_evaluation(session_id: int, db: Session = Depends(get_db)) -> Evaluatio
     evaluation.closed_at = None
     db.commit()
     db.refresh(evaluation)
-    return serialize_evaluation(db, evaluation)
+    return serialize_evaluation(db, evaluation, request)
 
 
 @router.post("/sessions/{session_id}/evaluation/close", response_model=EvaluationOut)
-def close_evaluation(session_id: int, db: Session = Depends(get_db)) -> EvaluationOut:
+def close_evaluation(session_id: int, request: Request, db: Session = Depends(get_db)) -> EvaluationOut:
     evaluation = db.query(SessionEvaluation).filter(SessionEvaluation.session_id == session_id).first()
     if not evaluation:
         raise HTTPException(status_code=404, detail="Evaluation not found")
@@ -200,15 +210,15 @@ def close_evaluation(session_id: int, db: Session = Depends(get_db)) -> Evaluati
     evaluation.closed_at = utc_now()
     db.commit()
     db.refresh(evaluation)
-    return serialize_evaluation(db, evaluation)
+    return serialize_evaluation(db, evaluation, request)
 
 
 @router.get("/sessions/{session_id}/evaluation", response_model=EvaluationOut)
-def get_session_evaluation(session_id: int, db: Session = Depends(get_db)) -> EvaluationOut:
+def get_session_evaluation(session_id: int, request: Request, db: Session = Depends(get_db)) -> EvaluationOut:
     evaluation = db.query(SessionEvaluation).filter(SessionEvaluation.session_id == session_id).first()
     if not evaluation:
         raise HTTPException(status_code=404, detail="Evaluation not found")
-    return serialize_evaluation(db, evaluation)
+    return serialize_evaluation(db, evaluation, request)
 
 
 @router.get("/sessions/{session_id}/evaluation/ranking", response_model=list[TeamRankingOut])

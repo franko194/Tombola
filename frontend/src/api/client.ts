@@ -1,4 +1,24 @@
-const API_BASE = import.meta.env.VITE_API_URL ?? "/api";
+function resolveApiBase() {
+  const configuredUrl = import.meta.env.VITE_API_URL;
+  if (!configuredUrl) return "/api";
+
+  try {
+    const configuredHost = new URL(configuredUrl).hostname;
+    const browserHost = window.location.hostname;
+    const configuredIsLocal = configuredHost === "localhost" || configuredHost === "127.0.0.1" || configuredHost === "::1";
+    const browserIsLocal = browserHost === "localhost" || browserHost === "127.0.0.1" || browserHost === "::1";
+
+    if (configuredIsLocal && !browserIsLocal) {
+      return "/api";
+    }
+  } catch {
+    return configuredUrl;
+  }
+
+  return configuredUrl;
+}
+
+const API_BASE = resolveApiBase();
 
 type RequestOptions = RequestInit & {
   json?: unknown;
