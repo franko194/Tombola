@@ -18,6 +18,7 @@ connect_args = {"check_same_thread": False} if DATABASE_URL.startswith("sqlite")
 
 engine = create_engine(DATABASE_URL, connect_args=connect_args)
 SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False)
+_db_initialized = False
 
 
 class Base(DeclarativeBase):
@@ -25,6 +26,7 @@ class Base(DeclarativeBase):
 
 
 def get_db() -> Generator[Session, None, None]:
+    ensure_db_initialized()
     db = SessionLocal()
     try:
         yield db
@@ -33,10 +35,17 @@ def get_db() -> Generator[Session, None, None]:
 
 
 def init_db() -> None:
+    global _db_initialized
     from app import models  # noqa: F401
 
     Base.metadata.create_all(bind=engine)
     migrate_assignments_allow_repeated_use_cases()
+    _db_initialized = True
+
+
+def ensure_db_initialized() -> None:
+    if not _db_initialized:
+        init_db()
 
 
 def migrate_assignments_allow_repeated_use_cases() -> None:
