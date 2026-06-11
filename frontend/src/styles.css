@@ -50,6 +50,12 @@ select {
   transform: translateY(-1px);
 }
 
+.btn-primary:disabled,
+.btn-primary:disabled:hover {
+  background: #7d98a0;
+  transform: none;
+}
+
 .btn-secondary {
   display: inline-flex;
   align-items: center;
@@ -246,7 +252,19 @@ select {
 
 .spin-btn:disabled {
   opacity: 0.62;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.spin-btn.is-spinning:disabled {
   cursor: wait;
+}
+
+.spin-btn.is-complete:disabled {
+  background: #243247;
+  opacity: 0.78;
+  box-shadow: none;
+  cursor: not-allowed;
 }
 
 .wheel-help {

@@ -177,7 +177,11 @@ export function TombolaPage({ session, onPageChange }: { session: Session; onPag
               <span>Friday</span>
             </div>
           </div>
-          <button className="btn-primary spin-btn" onClick={() => void spinWheel()} disabled={!readiness.ready || wheelSpinning || allDone}>
+          <button
+            className={`btn-primary spin-btn ${wheelSpinning ? "is-spinning" : ""} ${allDone ? "is-complete" : ""}`}
+            onClick={() => void spinWheel()}
+            disabled={!readiness.ready || wheelSpinning || allDone}
+          >
             <Play size={18} />
             {buttonLabel}
           </button>
