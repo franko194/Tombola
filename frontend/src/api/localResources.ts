@@ -443,4 +443,13 @@ export const localResources = {
     assign: (sessionId: number) => Promise.resolve(withStore((store) => assignUseCases(store, sessionId))),
     get: (sessionId: number) => Promise.resolve(withStore((store) => getResultsFromStore(store, sessionId))),
   },
+  evaluation: {
+    open: () => Promise.reject(new Error("La evaluacion con jurados requiere backend activo.")),
+    close: () => Promise.reject(new Error("La evaluacion con jurados requiere backend activo.")),
+    get: () => Promise.reject(new Error("La evaluacion con jurados requiere backend activo.")),
+    publicGet: () => Promise.reject(new Error("La evaluacion con jurados requiere backend activo.")),
+    identify: () => Promise.reject(new Error("La evaluacion con jurados requiere backend activo.")),
+    scores: () => Promise.resolve([]),
+    submitScores: () => Promise.reject(new Error("La evaluacion con jurados requiere backend activo.")),
+  },
 };

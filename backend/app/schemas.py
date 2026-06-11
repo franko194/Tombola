@@ -118,3 +118,81 @@ class ResultsOut(BaseModel):
     session: SessionOut
     teams: list[TeamOut]
     assignments: list[AssignmentOut]
+
+
+class JudgeIdentifyRequest(BaseModel):
+    name: str
+    email: str
+    organization: str | None = None
+
+
+class JudgeOut(ORMModel):
+    id: int
+    name: str
+    email: str
+    organization: str | None = None
+    active: bool
+
+
+class SessionJudgeOut(BaseModel):
+    judge: JudgeOut
+    status: str
+    checked_in_at: str | None = None
+    voted_teams: int = 0
+
+
+class EvaluationCriterionOut(ORMModel):
+    id: int
+    session_id: int
+    name: str
+    weight: float
+    max_score: int
+    order: int
+    active: bool
+
+
+class ScoreItemIn(BaseModel):
+    criterion_id: int
+    score: int = Field(ge=1, le=5)
+
+
+class TeamScoreSubmit(BaseModel):
+    judge_id: int
+    team_id: int
+    scores: list[ScoreItemIn]
+    comment: str | None = None
+
+
+class JudgeScoreOut(BaseModel):
+    team_id: int
+    criterion_id: int
+    score: int
+    comment: str | None = None
+
+
+class TeamRankingOut(BaseModel):
+    team_id: int
+    team_name: str
+    average_score: float
+    votes_count: int
+    judges_count: int
+
+
+class EvaluationOut(BaseModel):
+    id: int
+    session: SessionOut
+    token: str
+    status: str
+    judge_url: str
+    criteria: list[EvaluationCriterionOut]
+    judges: list[SessionJudgeOut]
+    ranking: list[TeamRankingOut]
+
+
+class PublicEvaluationOut(BaseModel):
+    session: SessionOut
+    token: str
+    status: str
+    criteria: list[EvaluationCriterionOut]
+    teams: list[TeamOut]
+    assignments: list[AssignmentOut]

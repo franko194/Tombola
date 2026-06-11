@@ -1,6 +1,18 @@
 import { api } from "./client";
 import { localResources } from "./localResources";
-import type { Assignment, Participant, Results, Session, TeamInsights, TeamsResponse, UseCase } from "../types";
+import type {
+  Assignment,
+  Evaluation,
+  Judge,
+  JudgeScore,
+  Participant,
+  PublicEvaluation,
+  Results,
+  Session,
+  TeamInsights,
+  TeamsResponse,
+  UseCase,
+} from "../types";
 
 const useLocalResources = import.meta.env.VITE_DATA_MODE === "local";
 
@@ -48,6 +60,19 @@ const apiResources = {
     assign: (sessionId: number) =>
       api<Assignment[]>(`/sessions/${sessionId}/use-cases/assign`, { method: "POST", json: { mode: "random" } }),
     get: (sessionId: number) => api<Results>(`/sessions/${sessionId}/results`),
+  },
+  evaluation: {
+    open: (sessionId: number) => api<Evaluation>(`/sessions/${sessionId}/evaluation/open`, { method: "POST" }),
+    close: (sessionId: number) => api<Evaluation>(`/sessions/${sessionId}/evaluation/close`, { method: "POST" }),
+    get: (sessionId: number) => api<Evaluation>(`/sessions/${sessionId}/evaluation`),
+    publicGet: (token: string) => api<PublicEvaluation>(`/judge/${token}`),
+    identify: (token: string, payload: { name: string; email: string; organization?: string }) =>
+      api<Judge>(`/judge/${token}/identify`, { method: "POST", json: payload }),
+    scores: (token: string, judgeId: number) => api<JudgeScore[]>(`/judge/${token}/scores?judge_id=${judgeId}`),
+    submitScores: (
+      token: string,
+      payload: { judge_id: number; team_id: number; scores: Array<{ criterion_id: number; score: number }>; comment?: string },
+    ) => api<JudgeScore[]>(`/judge/${token}/scores`, { method: "POST", json: payload }),
   },
 };
 

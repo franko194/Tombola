@@ -1,4 +1,4 @@
-import { BarChart3, ClipboardList, Home, Play, Presentation, Users } from "lucide-react";
+import { BarChart3, ClipboardCheck, ClipboardList, Home, Play, Presentation, Users } from "lucide-react";
 import type { PageKey, Session } from "../types";
 import { StatusBadge } from "./StatusBadge";
 
@@ -8,6 +8,7 @@ const tabs: Array<{ key: PageKey; label: string; icon: React.ComponentType<{ siz
   { key: "usecases", label: "Casos", icon: ClipboardList },
   { key: "teams", label: "Equipos", icon: BarChart3 },
   { key: "tombola", label: "Tombola", icon: Play },
+  { key: "evaluation", label: "Evaluacion", icon: ClipboardCheck },
   { key: "results", label: "Resultados", icon: Presentation },
 ];
 

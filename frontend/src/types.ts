@@ -69,4 +69,64 @@ export type Results = {
   assignments: Assignment[];
 };
 
-export type PageKey = "dashboard" | "participants" | "usecases" | "teams" | "tombola" | "results";
+export type Judge = {
+  id: number;
+  name: string;
+  email: string;
+  organization?: string | null;
+  active: boolean;
+};
+
+export type EvaluationCriterion = {
+  id: number;
+  session_id: number;
+  name: string;
+  weight: number;
+  max_score: number;
+  order: number;
+  active: boolean;
+};
+
+export type SessionJudge = {
+  judge: Judge;
+  status: string;
+  checked_in_at?: string | null;
+  voted_teams: number;
+};
+
+export type TeamRanking = {
+  team_id: number;
+  team_name: string;
+  average_score: number;
+  votes_count: number;
+  judges_count: number;
+};
+
+export type Evaluation = {
+  id: number;
+  session: Session;
+  token: string;
+  status: "open" | "closed" | string;
+  judge_url: string;
+  criteria: EvaluationCriterion[];
+  judges: SessionJudge[];
+  ranking: TeamRanking[];
+};
+
+export type PublicEvaluation = {
+  session: Session;
+  token: string;
+  status: "open" | "closed" | string;
+  criteria: EvaluationCriterion[];
+  teams: Team[];
+  assignments: Assignment[];
+};
+
+export type JudgeScore = {
+  team_id: number;
+  criterion_id: number;
+  score: number;
+  comment?: string | null;
+};
+
+export type PageKey = "dashboard" | "participants" | "usecases" | "teams" | "tombola" | "evaluation" | "results";

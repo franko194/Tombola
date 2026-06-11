@@ -90,3 +90,66 @@ class ResultSnapshot(Base):
     session_id: Mapped[int] = mapped_column(ForeignKey("sessions.id", ondelete="CASCADE"), unique=True)
     payload_json: Mapped[str]
     created_at: Mapped[str] = mapped_column(default=utc_now)
+
+
+class Judge(Base):
+    __tablename__ = "judges"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str]
+    email: Mapped[str] = mapped_column(unique=True)
+    organization: Mapped[str | None] = mapped_column(default=None)
+    active: Mapped[bool] = mapped_column(default=True)
+    created_at: Mapped[str] = mapped_column(default=utc_now)
+    updated_at: Mapped[str] = mapped_column(default=utc_now)
+
+
+class SessionEvaluation(Base):
+    __tablename__ = "session_evaluations"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    session_id: Mapped[int] = mapped_column(ForeignKey("sessions.id", ondelete="CASCADE"), unique=True)
+    token: Mapped[str] = mapped_column(unique=True)
+    status: Mapped[str] = mapped_column(default="open")
+    opened_at: Mapped[str] = mapped_column(default=utc_now)
+    closed_at: Mapped[str | None] = mapped_column(default=None)
+
+
+class SessionJudge(Base):
+    __tablename__ = "session_judges"
+    __table_args__ = (UniqueConstraint("session_id", "judge_id", name="unique_session_judge"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    session_id: Mapped[int] = mapped_column(ForeignKey("sessions.id", ondelete="CASCADE"))
+    judge_id: Mapped[int] = mapped_column(ForeignKey("judges.id", ondelete="CASCADE"))
+    status: Mapped[str] = mapped_column(default="checked_in")
+    invited_at: Mapped[str] = mapped_column(default=utc_now)
+    checked_in_at: Mapped[str | None] = mapped_column(default=utc_now)
+
+
+class EvaluationCriterion(Base):
+    __tablename__ = "evaluation_criteria"
+    __table_args__ = (UniqueConstraint("session_id", "name", name="unique_session_criterion"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    session_id: Mapped[int] = mapped_column(ForeignKey("sessions.id", ondelete="CASCADE"))
+    name: Mapped[str]
+    weight: Mapped[float] = mapped_column(default=1)
+    max_score: Mapped[int] = mapped_column(default=5)
+    order: Mapped[int] = mapped_column(default=0)
+    active: Mapped[bool] = mapped_column(default=True)
+
+
+class TeamScore(Base):
+    __tablename__ = "team_scores"
+    __table_args__ = (UniqueConstraint("session_id", "judge_id", "team_id", "criterion_id", name="unique_team_score"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    session_id: Mapped[int] = mapped_column(ForeignKey("sessions.id", ondelete="CASCADE"))
+    judge_id: Mapped[int] = mapped_column(ForeignKey("judges.id", ondelete="CASCADE"))
+    team_id: Mapped[int] = mapped_column(ForeignKey("teams.id", ondelete="CASCADE"))
+    criterion_id: Mapped[int] = mapped_column(ForeignKey("evaluation_criteria.id", ondelete="CASCADE"))
+    score: Mapped[int]
+    comment: Mapped[str | None] = mapped_column(default=None)
+    created_at: Mapped[str] = mapped_column(default=utc_now)
+    updated_at: Mapped[str] = mapped_column(default=utc_now)

@@ -150,3 +150,42 @@ def test_team_insights_use_local_fallback_without_openai_key(monkeypatch):
     assert body["summary"]
     assert len(body["strengths"]) >= 1
     assert len(body["recommendations"]) >= 1
+
+
+def test_evaluation_flow_registers_judge_scores_and_ranking():
+    session = client.post("/sessions", json={"name": "Evaluacion jurado", "date": "2026-06-26"}).json()
+    for index, level in enumerate([5, 4, 3, 2, 1, 0], start=1):
+        client.post(
+            f"/sessions/{session['id']}/participants",
+            json={"name": f"Participante {index}", "ai_level": level},
+        )
+    for title in ["Caso A", "Caso B", "Caso C"]:
+        client.post(f"/sessions/{session['id']}/use-cases", json={"title": title})
+    client.post(f"/sessions/{session['id']}/teams/generate", json={"number_of_teams": 3})
+    client.post(f"/sessions/{session['id']}/use-cases/assign", json={"mode": "random"})
+
+    opened = client.post(f"/sessions/{session['id']}/evaluation/open")
+
+    assert opened.status_code == 200
+    evaluation = opened.json()
+    assert evaluation["status"] == "open"
+    assert len(evaluation["criteria"]) == 5
+
+    public = client.get(f"/judge/{evaluation['token']}").json()
+    judge = client.post(
+        f"/judge/{evaluation['token']}/identify",
+        json={"name": "Jurado Uno", "email": "jurado@example.com", "organization": "IA Friday"},
+    ).json()
+    team_id = public["teams"][0]["id"]
+    scores = [{"criterion_id": criterion["id"], "score": 5} for criterion in public["criteria"]]
+
+    submitted = client.post(
+        f"/judge/{evaluation['token']}/scores",
+        json={"judge_id": judge["id"], "team_id": team_id, "scores": scores, "comment": "Muy buen pitch"},
+    )
+
+    assert submitted.status_code == 200
+    ranking = client.get(f"/sessions/{session['id']}/evaluation/ranking").json()
+    assert ranking[0]["team_id"] == team_id
+    assert ranking[0]["average_score"] == 5
+    assert ranking[0]["votes_count"] == 1

@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { Layout } from "./components/Layout";
 import { DashboardPage } from "./pages/DashboardPage";
+import { EvaluationPage } from "./pages/EvaluationPage";
+import { JudgePage } from "./pages/JudgePage";
 import { ParticipantsPage } from "./pages/ParticipantsPage";
 import { ResultsPage } from "./pages/ResultsPage";
 import { SessionsPage } from "./pages/SessionsPage";
@@ -10,8 +12,13 @@ import { UseCasesPage } from "./pages/UseCasesPage";
 import type { PageKey, Session } from "./types";
 
 export default function App() {
+  const judgeMatch = window.location.pathname.match(/^\/judge\/([^/]+)/);
   const [session, setSession] = useState<Session | null>(null);
   const [page, setPage] = useState<PageKey>("dashboard");
+
+  if (judgeMatch) {
+    return <JudgePage token={decodeURIComponent(judgeMatch[1])} />;
+  }
 
   useEffect(() => {
     const saved = window.localStorage.getItem("ia-friday-session");
@@ -43,6 +50,7 @@ export default function App() {
       {page === "usecases" && <UseCasesPage session={session} />}
       {page === "teams" && <TeamsPage session={session} />}
       {page === "tombola" && <TombolaPage session={session} onPageChange={setPage} />}
+      {page === "evaluation" && <EvaluationPage session={session} />}
       {page === "results" && <ResultsPage session={session} onSessionUpdate={selectSession} onReturnHome={returnToSessions} />}
     </Layout>
   );

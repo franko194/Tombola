@@ -5,6 +5,10 @@
   "outputDirectory": "frontend/dist",
   "rewrites": [
     {
+      "source": "/judge/:token",
+      "destination": "/index.html"
+    },
+    {
       "source": "/api",
       "destination": "/api/index.py"
     },
