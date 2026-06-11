@@ -1,7 +1,10 @@
 import { api } from "./client";
+import { localResources } from "./localResources";
 import type { Assignment, Participant, Results, Session, TeamsResponse, UseCase } from "../types";
 
-export const resources = {
+const useLocalResources = import.meta.env.VITE_DATA_MODE === "local" || (import.meta.env.PROD && import.meta.env.VITE_DATA_MODE !== "api");
+
+const apiResources = {
   sessions: {
     list: () => api<Session[]>("/sessions"),
     create: (payload: { name: string; date: string }) => api<Session>("/sessions", { method: "POST", json: payload }),
@@ -46,3 +49,5 @@ export const resources = {
     get: (sessionId: number) => api<Results>(`/sessions/${sessionId}/results`),
   },
 };
+
+export const resources = useLocalResources ? localResources : apiResources;
