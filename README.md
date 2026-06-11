@@ -1,6 +1,6 @@
 # IA Friday Tombola
 
-Aplicacion web reusable para sesiones semanales de IA Friday. Permite registrar participantes, cargar casos de uso, generar equipos balanceados por nivel de IA, asignar casos mediante una tombola visual y mostrar resultados en pantalla compartida.
+Aplicacion web reusable para sesiones semanales de IA Friday. Permite registrar participantes, cargar casos de uso, generar equipos balanceados por nivel de IA, repartir casos mediante una tombola visual y mostrar resultados en pantalla compartida.
 
 ## Stack
 
@@ -75,4 +75,3 @@ Juan Diaz,5
 6. Ejecutar la tombola.
 7. Abrir resultados para pantalla compartida.
 8. Marcar la sesion como completada.
-
