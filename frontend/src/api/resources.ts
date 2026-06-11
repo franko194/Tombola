@@ -62,6 +62,7 @@ const apiResources = {
     get: (sessionId: number) => api<Results>(`/sessions/${sessionId}/results`),
   },
   evaluation: {
+    prepare: (sessionId: number) => api<Evaluation>(`/sessions/${sessionId}/evaluation/prepare`, { method: "POST" }),
     open: (sessionId: number) => api<Evaluation>(`/sessions/${sessionId}/evaluation/open`, { method: "POST" }),
     close: (sessionId: number) => api<Evaluation>(`/sessions/${sessionId}/evaluation/close`, { method: "POST" }),
     get: (sessionId: number) => api<Evaluation>(`/sessions/${sessionId}/evaluation`),

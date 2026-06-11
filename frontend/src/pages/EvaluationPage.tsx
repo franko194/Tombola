@@ -11,7 +11,7 @@ export function EvaluationPage({ session }: { session: Session }) {
   async function load() {
     try {
       setError("");
-      setEvaluation(await resources.evaluation.get(session.id));
+      setEvaluation(await resources.evaluation.prepare(session.id));
     } catch {
       setEvaluation(null);
     }
@@ -63,7 +63,7 @@ export function EvaluationPage({ session }: { session: Session }) {
           <div>
             <h2 className="text-2xl font-black text-slate-950">Evaluacion por fecha</h2>
             <p className="mt-1 max-w-2xl font-medium text-slate-600">
-              Abre una votacion para esta sesion, comparte el QR con jurados y revisa el ranking en vivo.
+              El QR esta disponible desde el inicio. Los jurados pueden registrarse antes de abrir la votacion.
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -71,10 +71,10 @@ export function EvaluationPage({ session }: { session: Session }) {
               <RefreshCw size={18} />
               Actualizar
             </button>
-            {!evaluation || evaluation.status === "closed" ? (
+            {!evaluation || evaluation.status === "closed" || evaluation.status === "prepared" ? (
               <button className="btn-primary" onClick={() => void openEvaluation()} disabled={loading}>
                 <Unlock size={18} />
-                {evaluation ? "Reabrir evaluacion" : "Abrir evaluacion"}
+                {evaluation?.status === "closed" ? "Reabrir evaluacion" : "Abrir votacion"}
               </button>
             ) : (
               <button className="btn-danger" onClick={() => void closeEvaluation()} disabled={loading}>
@@ -103,7 +103,9 @@ export function EvaluationPage({ session }: { session: Session }) {
                 <Clipboard size={18} />
                 Copiar link
               </button>
-              <p className="mt-3 text-sm font-bold text-slate-500">Estado: {evaluation.status === "open" ? "Abierta" : "Cerrada"}</p>
+              <p className="mt-3 text-sm font-bold text-slate-500">
+                Estado: {evaluation.status === "open" ? "Abierta" : evaluation.status === "prepared" ? "Registro previo" : "Cerrada"}
+              </p>
             </div>
 
             <div className="lab-surface rounded-lg p-5">
@@ -158,7 +160,7 @@ export function EvaluationPage({ session }: { session: Session }) {
           </div>
         </>
       ) : (
-        <div className="lab-surface rounded-lg p-6 font-bold text-slate-500">Abre la evaluacion cuando los equipos esten listos.</div>
+        <div className="lab-surface rounded-lg p-6 font-bold text-slate-500">Preparando QR de jurados...</div>
       )}
     </section>
   );

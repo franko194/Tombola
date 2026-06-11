@@ -143,6 +143,28 @@ def serialize_evaluation(db: Session, evaluation: SessionEvaluation) -> Evaluati
     )
 
 
+def get_or_create_evaluation(db: Session, session_id: int, status: str = "prepared") -> SessionEvaluation:
+    session = db.get(SessionModel, session_id)
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found")
+
+    evaluation = db.query(SessionEvaluation).filter(SessionEvaluation.session_id == session_id).first()
+    if not evaluation:
+        evaluation = SessionEvaluation(session_id=session_id, token=secrets.token_urlsafe(8), status=status)
+        db.add(evaluation)
+        db.flush()
+    ensure_default_criteria(db, session_id)
+    return evaluation
+
+
+@router.post("/sessions/{session_id}/evaluation/prepare", response_model=EvaluationOut)
+def prepare_evaluation(session_id: int, db: Session = Depends(get_db)) -> EvaluationOut:
+    evaluation = get_or_create_evaluation(db, session_id, "prepared")
+    db.commit()
+    db.refresh(evaluation)
+    return serialize_evaluation(db, evaluation)
+
+
 @router.post("/sessions/{session_id}/evaluation/open", response_model=EvaluationOut)
 def open_evaluation(session_id: int, db: Session = Depends(get_db)) -> EvaluationOut:
     session = db.get(SessionModel, session_id)
@@ -151,14 +173,9 @@ def open_evaluation(session_id: int, db: Session = Depends(get_db)) -> Evaluatio
     if not db.query(Team).filter(Team.session_id == session_id).count():
         raise HTTPException(status_code=400, detail="Generate teams before opening evaluation")
 
-    evaluation = db.query(SessionEvaluation).filter(SessionEvaluation.session_id == session_id).first()
-    if evaluation:
-        evaluation.status = "open"
-        evaluation.closed_at = None
-    else:
-        evaluation = SessionEvaluation(session_id=session_id, token=secrets.token_urlsafe(8), status="open")
-        db.add(evaluation)
-    ensure_default_criteria(db, session_id)
+    evaluation = get_or_create_evaluation(db, session_id, "open")
+    evaluation.status = "open"
+    evaluation.closed_at = None
     db.commit()
     db.refresh(evaluation)
     return serialize_evaluation(db, evaluation)
@@ -210,7 +227,7 @@ def get_public_evaluation(token: str, db: Session = Depends(get_db)) -> PublicEv
 @router.post("/judge/{token}/identify", response_model=JudgeOut)
 def identify_judge(token: str, payload: JudgeIdentifyRequest, db: Session = Depends(get_db)) -> JudgeOut:
     evaluation = get_evaluation_by_token(db, token)
-    if evaluation.status != "open":
+    if evaluation.status == "closed":
         raise HTTPException(status_code=400, detail="Evaluation is closed")
 
     email = payload.email.strip().lower()

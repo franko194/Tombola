@@ -123,12 +123,13 @@ Cada sesion puede abrir una evaluacion independiente para la fecha del IA Friday
 
 Flujo:
 
-1. Generar equipos y asignar casos.
-2. Abrir la pestaña `Evaluacion`.
-3. Presionar `Abrir evaluacion`.
-4. Compartir el QR o link con los jurados.
-5. Cada jurado entra a `/judge/{token}`, se identifica con nombre/email y puntua equipos.
-6. El organizador ve ranking en vivo y puede cerrar la evaluacion.
+1. Al entrar al dashboard de una sesion, la app prepara un QR de jurados.
+2. Comparte el QR o link con los jurados desde el inicio.
+3. Cada jurado entra a `/judge/{token}` y se identifica con nombre/email aunque la votacion aun no este abierta.
+4. Genera equipos y asigna casos.
+5. Abre la pestaña `Evaluacion` y presiona `Abrir votacion`.
+6. Los jurados actualizan la pantalla y puntuan equipos.
+7. El organizador ve ranking en vivo y puede cerrar la evaluacion.
 
 Los jurados son globales por email, pero sus votos se guardan por sesion. Si un jurado no viene, simplemente queda pendiente; si llega un jurado nuevo, se registra desde el QR y queda asociado a esa fecha.
 

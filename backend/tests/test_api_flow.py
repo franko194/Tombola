@@ -189,3 +189,23 @@ def test_evaluation_flow_registers_judge_scores_and_ranking():
     assert ranking[0]["team_id"] == team_id
     assert ranking[0]["average_score"] == 5
     assert ranking[0]["votes_count"] == 1
+
+
+def test_judge_can_register_before_evaluation_opens():
+    session = client.post("/sessions", json={"name": "Registro previo", "date": "2026-06-26"}).json()
+
+    prepared = client.post(f"/sessions/{session['id']}/evaluation/prepare")
+
+    assert prepared.status_code == 200
+    evaluation = prepared.json()
+    assert evaluation["status"] == "prepared"
+
+    judge = client.post(
+        f"/judge/{evaluation['token']}/identify",
+        json={"name": "Jurado Previo", "email": "previo@example.com"},
+    )
+
+    assert judge.status_code == 200
+    refreshed = client.get(f"/sessions/{session['id']}/evaluation").json()
+    assert len(refreshed["judges"]) == 1
+    assert refreshed["judges"][0]["judge"]["email"] == "previo@example.com"

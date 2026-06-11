@@ -1,13 +1,15 @@
-import { BarChart3, ClipboardList, Sparkles, Users } from "lucide-react";
-import { useEffect, useState } from "react";
+import { BarChart3, Clipboard, ClipboardList, QrCode, Sparkles, Users } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
 import { resources } from "../api/resources";
 import { MetricCard } from "../components/MetricCard";
-import type { PageKey, Participant, Session, Team, UseCase } from "../types";
+import type { Evaluation, PageKey, Participant, Session, Team, UseCase } from "../types";
 
 export function DashboardPage({ session, onPageChange }: { session: Session; onPageChange: (page: PageKey) => void }) {
   const [participants, setParticipants] = useState<Participant[]>([]);
   const [useCases, setUseCases] = useState<UseCase[]>([]);
   const [teams, setTeams] = useState<Team[]>([]);
+  const [evaluation, setEvaluation] = useState<Evaluation | null>(null);
+  const [evaluationError, setEvaluationError] = useState("");
 
   useEffect(() => {
     void Promise.all([
@@ -15,7 +17,21 @@ export function DashboardPage({ session, onPageChange }: { session: Session; onP
       resources.useCases.list(session.id).then(setUseCases),
       resources.teams.list(session.id).then((data) => setTeams(data.teams)),
     ]);
+    void resources.evaluation
+      .prepare(session.id)
+      .then(setEvaluation)
+      .catch((err) => setEvaluationError((err as Error).message));
   }, [session.id]);
+
+  const qrUrl = useMemo(() => {
+    if (!evaluation?.judge_url) return "";
+    return `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(evaluation.judge_url)}`;
+  }, [evaluation?.judge_url]);
+
+  async function copyJudgeLink() {
+    if (!evaluation?.judge_url) return;
+    await navigator.clipboard.writeText(evaluation.judge_url);
+  }
 
   const next =
     participants.length < 2
@@ -50,6 +66,34 @@ export function DashboardPage({ session, onPageChange }: { session: Session; onP
         <MetricCard label="Participantes" value={participants.length} icon={<Users size={24} />} />
         <MetricCard label="Casos de uso" value={useCases.length} icon={<ClipboardList size={24} />} />
         <MetricCard label="Equipos" value={teams.length} icon={<BarChart3 size={24} />} />
+      </div>
+
+      <div className="lab-surface rounded-lg p-5">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div>
+            <div className="flex items-center gap-2">
+              <QrCode className="text-teal-700" size={22} />
+              <h3 className="text-xl font-black text-slate-950">Ingreso de jurados</h3>
+            </div>
+            <p className="mt-2 max-w-2xl font-medium text-slate-600">
+              Comparte este QR desde el inicio. Los jurados pueden registrarse antes de abrir la votacion y quedaran asociados a esta fecha.
+            </p>
+            {evaluation?.judge_url ? <p className="mt-3 break-all rounded-lg bg-slate-50 p-3 text-sm font-bold text-slate-600">{evaluation.judge_url}</p> : null}
+            {evaluationError ? <p className="mt-3 rounded-lg bg-red-50 p-3 font-semibold text-red-700">{evaluationError}</p> : null}
+            <div className="mt-3 flex flex-wrap gap-2">
+              <button className="btn-secondary" onClick={() => void copyJudgeLink()} disabled={!evaluation?.judge_url}>
+                <Clipboard size={18} />
+                Copiar link
+              </button>
+              <button className="btn-primary" onClick={() => onPageChange("evaluation")}>
+                Ir a evaluacion
+              </button>
+            </div>
+          </div>
+          <div className="grid place-items-center rounded-lg bg-white p-4">
+            {qrUrl ? <img src={qrUrl} alt="QR para registro de jurados" width={180} height={180} /> : <p className="p-8 font-bold text-slate-500">Preparando QR...</p>}
+          </div>
+        </div>
       </div>
     </section>
   );

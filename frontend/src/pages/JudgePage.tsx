@@ -95,7 +95,12 @@ export function JudgePage({ token }: { token: string }) {
           <p className="text-xs font-black uppercase tracking-[0.18em] text-teal-700">Jurado IA Friday</p>
           <h1 className="mt-2 text-3xl font-black text-slate-950">{evaluation.session.name}</h1>
           <p className="mt-1 font-semibold text-slate-500">{evaluation.session.date}</p>
-          {evaluation.status !== "open" ? <p className="mt-3 rounded-lg bg-amber-50 p-3 font-bold text-amber-800">La evaluacion esta cerrada.</p> : null}
+          {evaluation.status === "prepared" ? (
+            <p className="mt-3 rounded-lg bg-amber-50 p-3 font-bold text-amber-800">
+              La votacion aun no esta abierta, pero puedes registrarte como jurado de esta fecha.
+            </p>
+          ) : null}
+          {evaluation.status === "closed" ? <p className="mt-3 rounded-lg bg-amber-50 p-3 font-bold text-amber-800">La evaluacion esta cerrada.</p> : null}
           {error ? <p className="mt-3 rounded-lg bg-red-50 p-3 font-semibold text-red-700">{error}</p> : null}
         </section>
 
@@ -105,11 +110,19 @@ export function JudgePage({ token }: { token: string }) {
             <input className="input" placeholder="Nombre" value={name} onChange={(event) => setName(event.target.value)} required />
             <input className="input" placeholder="Email" type="email" value={email} onChange={(event) => setEmail(event.target.value)} required />
             <input className="input" placeholder="Empresa o area (opcional)" value={organization} onChange={(event) => setOrganization(event.target.value)} />
-            <button className="btn-primary" disabled={evaluation.status !== "open"}>
+            <button className="btn-primary" disabled={evaluation.status === "closed"}>
               Continuar
             </button>
           </form>
         ) : (
+          evaluation.status === "prepared" ? (
+            <section className="lab-surface rounded-lg p-5">
+              <h2 className="text-xl font-black text-slate-950">Registro recibido</h2>
+              <p className="mt-2 font-semibold text-slate-600">
+                Gracias, {judge.name}. Ya quedaste registrado como jurado para esta sesion. Cuando el organizador abra la votacion, actualiza esta pagina para puntuar los equipos.
+              </p>
+            </section>
+          ) : (
           <>
             <section className="lab-surface rounded-lg p-5">
               <h2 className="text-xl font-black text-slate-950">Equipos</h2>
@@ -161,6 +174,7 @@ export function JudgePage({ token }: { token: string }) {
               </form>
             ) : null}
           </>
+          )
         )}
       </main>
     </div>

@@ -444,6 +444,7 @@ export const localResources = {
     get: (sessionId: number) => Promise.resolve(withStore((store) => getResultsFromStore(store, sessionId))),
   },
   evaluation: {
+    prepare: () => Promise.reject(new Error("La evaluacion con jurados requiere backend activo.")),
     open: () => Promise.reject(new Error("La evaluacion con jurados requiere backend activo.")),
     close: () => Promise.reject(new Error("La evaluacion con jurados requiere backend activo.")),
     get: () => Promise.reject(new Error("La evaluacion con jurados requiere backend activo.")),
