@@ -1,4 +1,4 @@
-import type { Assignment, Participant, Results, Session, SessionStatus, Team, TeamsResponse, UseCase } from "../types";
+import type { Assignment, Participant, Results, Session, SessionStatus, Team, TeamInsights, TeamsResponse, UseCase } from "../types";
 
 type Store = {
   nextId: number;
@@ -72,6 +72,30 @@ function buildBalance(teams: Team[]) {
     highest_average,
     lowest_average,
     average_gap: Number((highest_average - lowest_average).toFixed(4)),
+  };
+}
+
+function buildLocalTeamInsights(teamsResponse: TeamsResponse): TeamInsights {
+  const balance = teamsResponse.balance;
+  const teamSummary = teamsResponse.teams
+    .map((team) => `${team.name}: promedio ${team.average_ai_level}, score ${team.total_ai_score}`)
+    .join("; ");
+  return {
+    summary:
+      balance.average_gap <= 0.5
+        ? `Los equipos quedaron muy equilibrados: la brecha entre el promedio mas alto y mas bajo es ${balance.average_gap}.`
+        : `Los equipos estan distribuidos con una brecha de promedio de ${balance.average_gap}; conviene reforzar colaboracion entre perfiles avanzados y principiantes.`,
+    strengths: [
+      "La distribucion combina niveles altos y bajos para evitar concentrar expertos.",
+      "Los equipos mantienen tamanos comparables y scores faciles de revisar.",
+      "El promedio por equipo permite explicar rapidamente la equidad del sorteo.",
+    ],
+    recommendations: [
+      "Pide a los perfiles avanzados que faciliten decisiones tecnicas dentro de su equipo.",
+      "Usa la brecha de promedio como senal para ajustar manualmente solo si el contexto lo requiere.",
+      `Resumen operativo: ${teamSummary}.`,
+    ],
+    generated_by: "local",
   };
 }
 
@@ -406,6 +430,14 @@ export const localResources = {
       ),
     generate: (sessionId: number, numberOfTeams: number) =>
       Promise.resolve(withStore((store) => generateBalancedTeams(store, sessionId, numberOfTeams))),
+    insights: (sessionId: number) =>
+      Promise.resolve(
+        withStore((store) => {
+          const teams = store.teamsBySession[String(sessionId)] ?? [];
+          if (!teams.length) throw new Error("Generate teams before requesting insights");
+          return buildLocalTeamInsights({ teams, balance: buildBalance(teams) });
+        }),
+      ),
   },
   results: {
     assign: (sessionId: number) => Promise.resolve(withStore((store) => assignUseCases(store, sessionId))),

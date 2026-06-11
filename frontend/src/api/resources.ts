@@ -1,6 +1,6 @@
 import { api } from "./client";
 import { localResources } from "./localResources";
-import type { Assignment, Participant, Results, Session, TeamsResponse, UseCase } from "../types";
+import type { Assignment, Participant, Results, Session, TeamInsights, TeamsResponse, UseCase } from "../types";
 
 const useLocalResources = import.meta.env.VITE_DATA_MODE === "local";
 
@@ -42,6 +42,7 @@ const apiResources = {
     list: (sessionId: number) => api<TeamsResponse>(`/sessions/${sessionId}/teams`),
     generate: (sessionId: number, number_of_teams: number) =>
       api<TeamsResponse>(`/sessions/${sessionId}/teams/generate`, { method: "POST", json: { number_of_teams } }),
+    insights: (sessionId: number) => api<TeamInsights>(`/sessions/${sessionId}/teams/insights`, { method: "POST" }),
   },
   results: {
     assign: (sessionId: number) =>

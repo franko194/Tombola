@@ -5,7 +5,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.database import check_database, init_db
-from app.routers import participants, results, sessions, teams, usecases
+from app.routers import ai, participants, results, sessions, teams, usecases
 
 
 @asynccontextmanager
@@ -49,4 +49,5 @@ app.include_router(participants.router)
 app.include_router(usecases.router)
 app.include_router(teams.router)
 app.include_router(results.router)
+app.include_router(ai.router)
 

@@ -46,6 +46,13 @@ export type TeamsResponse = {
   };
 };
 
+export type TeamInsights = {
+  summary: string;
+  strengths: string[];
+  recommendations: string[];
+  generated_by: "local" | "openai" | string;
+};
+
 export type Assignment = {
   id: number;
   team_id: number;

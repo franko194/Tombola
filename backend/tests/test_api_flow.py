@@ -130,3 +130,23 @@ def test_assign_use_cases_repeats_cases_when_there_are_more_teams_than_cases():
     use_case_ids = [assignment["use_case_id"] for assignment in assignments]
     assert len(assignments) == 4
     assert len(set(use_case_ids)) == 3
+
+
+def test_team_insights_use_local_fallback_without_openai_key(monkeypatch):
+    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+    session = client.post("/sessions", json={"name": "Insights session", "date": "2026-06-26"}).json()
+    for index, level in enumerate([5, 4, 3, 2, 1, 0], start=1):
+        client.post(
+            f"/sessions/{session['id']}/participants",
+            json={"name": f"Participante {index}", "ai_level": level},
+        )
+    client.post(f"/sessions/{session['id']}/teams/generate", json={"number_of_teams": 3})
+
+    response = client.post(f"/sessions/{session['id']}/teams/insights")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["generated_by"] == "local"
+    assert body["summary"]
+    assert len(body["strengths"]) >= 1
+    assert len(body["recommendations"]) >= 1

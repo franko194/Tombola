@@ -98,6 +98,25 @@ Si quieres volver al modo sin backend y guardar solo en el navegador, configura:
 VITE_DATA_MODE=local
 ```
 
+## IA generativa
+
+La pantalla de equipos puede generar una explicacion inteligente del balance.
+
+Sin configurar nada, la app usa una explicacion local calculada desde promedios y scores.
+
+Para usar OpenAI, agrega estas variables en Vercel:
+
+```env
+OPENAI_API_KEY=sk-proj_xxx
+OPENAI_MODEL=gpt-4.1-mini
+```
+
+El frontend nunca usa la API key directamente. La llamada es:
+
+```txt
+React -> /api/sessions/{id}/teams/insights -> FastAPI -> OpenAI
+```
+
 ## Importacion
 
 CSV o Excel deben incluir estas columnas:

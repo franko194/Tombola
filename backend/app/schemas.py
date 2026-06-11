@@ -93,6 +93,13 @@ class TeamsResponse(BaseModel):
     balance: BalanceOut
 
 
+class TeamInsightsOut(BaseModel):
+    summary: str
+    strengths: list[str]
+    recommendations: list[str]
+    generated_by: str
+
+
 class AssignmentRequest(BaseModel):
     mode: str = "random"
 

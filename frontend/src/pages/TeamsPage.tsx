@@ -1,11 +1,13 @@
-import { RefreshCw, Users } from "lucide-react";
+import { RefreshCw, Sparkles, Users } from "lucide-react";
 import { useEffect, useState } from "react";
 import { resources } from "../api/resources";
-import type { Session, TeamsResponse } from "../types";
+import type { Session, TeamInsights, TeamsResponse } from "../types";
 
 export function TeamsPage({ session }: { session: Session }) {
   const [numberOfTeams, setNumberOfTeams] = useState(3);
   const [data, setData] = useState<TeamsResponse | null>(null);
+  const [insights, setInsights] = useState<TeamInsights | null>(null);
+  const [loadingInsights, setLoadingInsights] = useState(false);
   const [error, setError] = useState("");
 
   async function load() {
@@ -20,8 +22,21 @@ export function TeamsPage({ session }: { session: Session }) {
     try {
       setError("");
       setData(await resources.teams.generate(session.id, numberOfTeams));
+      setInsights(null);
     } catch (err) {
       setError((err as Error).message);
+    }
+  }
+
+  async function generateInsights() {
+    try {
+      setError("");
+      setLoadingInsights(true);
+      setInsights(await resources.teams.insights(session.id));
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setLoadingInsights(false);
     }
   }
 
@@ -58,6 +73,48 @@ export function TeamsPage({ session }: { session: Session }) {
               <p className="text-sm font-bold text-slate-500">Brecha</p>
               <p className="text-3xl font-black text-teal-800">{data.balance.average_gap}</p>
             </div>
+          </div>
+          <div className="lab-surface rounded-lg p-5">
+            <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+              <div>
+                <h3 className="text-xl font-black text-slate-950">Explicacion inteligente de balance</h3>
+                <p className="mt-1 font-medium text-slate-600">Genera una lectura ejecutiva para explicar por que los equipos quedaron equilibrados.</p>
+              </div>
+              <button className="btn-secondary" onClick={() => void generateInsights()} disabled={loadingInsights || !data.teams.length}>
+                <Sparkles size={18} />
+                {loadingInsights ? "Generando..." : "Generar explicacion"}
+              </button>
+            </div>
+            {insights ? (
+              <div className="mt-4 grid gap-4">
+                <p className="rounded-lg bg-teal-50 p-4 font-bold text-teal-950">{insights.summary}</p>
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div>
+                    <p className="text-sm font-black uppercase tracking-[0.12em] text-slate-500">Fortalezas</p>
+                    <ul className="mt-2 grid gap-2">
+                      {insights.strengths.map((item) => (
+                        <li key={item} className="rounded-lg bg-slate-50 px-3 py-2 font-semibold text-slate-700">
+                          {item}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                  <div>
+                    <p className="text-sm font-black uppercase tracking-[0.12em] text-slate-500">Recomendaciones</p>
+                    <ul className="mt-2 grid gap-2">
+                      {insights.recommendations.map((item) => (
+                        <li key={item} className="rounded-lg bg-slate-50 px-3 py-2 font-semibold text-slate-700">
+                          {item}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+                <p className="text-xs font-bold uppercase tracking-[0.12em] text-slate-400">
+                  Fuente: {insights.generated_by === "openai" ? "OpenAI" : "analisis local"}
+                </p>
+              </div>
+            ) : null}
           </div>
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
             {data.teams.map((team) => (
