@@ -1,4 +1,5 @@
 import sys
+from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import FastAPI
@@ -12,9 +13,17 @@ FRONTEND_DIST = ROOT_DIR / "frontend" / "dist"
 if str(BACKEND_DIR) not in sys.path:
     sys.path.insert(0, str(BACKEND_DIR))
 
+from app.database import init_db  # noqa: E402
 from app.main import app as backend_app  # noqa: E402
 
-app = FastAPI(title="IA Friday Tombola")
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    init_db()
+    yield
+
+
+app = FastAPI(title="IA Friday Tombola", lifespan=lifespan)
 
 app.mount("/api/index.py", backend_app)
 app.mount("/api", backend_app)

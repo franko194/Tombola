@@ -1,6 +1,7 @@
 from collections.abc import Generator
 import os
 from pathlib import Path
+import tempfile
 
 from sqlalchemy import create_engine
 from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
@@ -11,7 +12,7 @@ DATA_DIR = Path(__file__).resolve().parents[1] / "data"
 if not IS_VERCEL:
     DATA_DIR.mkdir(parents=True, exist_ok=True)
 
-default_sqlite_path = Path("/tmp/ia_friday.db") if IS_VERCEL else DATA_DIR / "ia_friday.db"
+default_sqlite_path = Path(tempfile.gettempdir()) / "ia_friday.db" if IS_VERCEL else DATA_DIR / "ia_friday.db"
 DATABASE_URL = os.environ.get("DATABASE_URL", f"sqlite:///{default_sqlite_path}")
 connect_args = {"check_same_thread": False} if DATABASE_URL.startswith("sqlite") else {}
 
