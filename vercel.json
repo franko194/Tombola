@@ -12,10 +12,5 @@
       "source": "/(.*)",
       "destination": "/index.html"
     }
-  ],
-  "functions": {
-    "api/index.py": {
-      "excludeFiles": "{backend/tests/**,frontend/**,docs/**,**/__pycache__/**,**/.pytest_cache/**,backend/data/**}"
-    }
-  }
+  ]
 }
