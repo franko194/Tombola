@@ -1,0 +1,71 @@
+from collections.abc import Generator
+import os
+from pathlib import Path
+
+from sqlalchemy import create_engine
+from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
+
+DATA_DIR = Path(__file__).resolve().parents[1] / "data"
+DATA_DIR.mkdir(parents=True, exist_ok=True)
+
+DATABASE_URL = os.environ.get("DATABASE_URL", f"sqlite:///{DATA_DIR / 'ia_friday.db'}")
+
+engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
+SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False)
+
+
+class Base(DeclarativeBase):
+    pass
+
+
+def get_db() -> Generator[Session, None, None]:
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
+
+def init_db() -> None:
+    from app import models  # noqa: F401
+
+    Base.metadata.create_all(bind=engine)
+    migrate_assignments_allow_repeated_use_cases()
+
+
+def migrate_assignments_allow_repeated_use_cases() -> None:
+    if engine.dialect.name != "sqlite":
+        return
+
+    with engine.begin() as connection:
+        table_exists = connection.exec_driver_sql(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name='assignments'"
+        ).first()
+        if not table_exists:
+            return
+
+        unique_use_case_index = None
+        for index in connection.exec_driver_sql("PRAGMA index_list(assignments)").mappings():
+            if not index["unique"]:
+                continue
+            columns = [
+                row["name"]
+                for row in connection.exec_driver_sql(f"PRAGMA index_info({index['name']})").mappings()
+            ]
+            if columns == ["session_id", "use_case_id"]:
+                unique_use_case_index = index["name"]
+                break
+
+        if not unique_use_case_index:
+            return
+
+        connection.exec_driver_sql("ALTER TABLE assignments RENAME TO assignments_old")
+        Base.metadata.tables["assignments"].create(bind=connection)
+        connection.exec_driver_sql(
+            """
+            INSERT INTO assignments (id, session_id, team_id, use_case_id, assigned_at)
+            SELECT id, session_id, team_id, use_case_id, assigned_at
+            FROM assignments_old
+            """
+        )
+        connection.exec_driver_sql("DROP TABLE assignments_old")
