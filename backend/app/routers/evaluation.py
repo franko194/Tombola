@@ -33,6 +33,7 @@ from app.schemas import (
 )
 
 router = APIRouter(tags=["evaluation"])
+DEFAULT_PUBLIC_APP_URL = "https://tombola-rust.vercel.app"
 
 DEFAULT_CRITERIA = [
     ("Presentation & Communication", 1.0),
@@ -52,9 +53,12 @@ def public_base_url(request: Request | None = None) -> str:
         forwarded_host = request.headers.get("x-forwarded-host")
         host = forwarded_host or request.headers.get("host")
         if host:
+            default_host = DEFAULT_PUBLIC_APP_URL.removeprefix("https://").removeprefix("http://")
+            if host.endswith(".vercel.app") and host != default_host:
+                return DEFAULT_PUBLIC_APP_URL
             scheme = forwarded_proto or request.url.scheme or "https"
             return f"{scheme}://{host}".rstrip("/")
-    return "https://tombola-rust.vercel.app"
+    return DEFAULT_PUBLIC_APP_URL
 
 
 def build_judge_url(token: str, request: Request | None = None) -> str:

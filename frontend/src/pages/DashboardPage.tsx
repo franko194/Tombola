@@ -4,10 +4,24 @@ import { resources } from "../api/resources";
 import { MetricCard } from "../components/MetricCard";
 import type { Evaluation, PageKey, Participant, Session, Team, UseCase } from "../types";
 
+const DEFAULT_PUBLIC_APP_URL = "https://tombola-rust.vercel.app";
+
+function getPublicAppUrl() {
+  const configuredUrl = import.meta.env.VITE_PUBLIC_APP_URL?.replace(/\/$/, "");
+  if (configuredUrl) return configuredUrl;
+
+  const currentHost = window.location.hostname;
+  const defaultHost = new URL(DEFAULT_PUBLIC_APP_URL).hostname;
+  if (currentHost.endsWith(".vercel.app") && currentHost !== defaultHost) {
+    return DEFAULT_PUBLIC_APP_URL;
+  }
+
+  return window.location.origin;
+}
+
 function buildJudgeUrl(token?: string, fallbackUrl?: string) {
   if (!token) return fallbackUrl ?? "";
-  const configuredUrl = import.meta.env.VITE_PUBLIC_APP_URL?.replace(/\/$/, "");
-  const baseUrl = configuredUrl || window.location.origin;
+  const baseUrl = getPublicAppUrl();
   return `${baseUrl}/judge/${token}`;
 }
 
