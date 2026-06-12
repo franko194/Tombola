@@ -22,7 +22,6 @@ export function JudgePage({ token }: { token: string }) {
   const [comment, setComment] = useState("");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
-  const [organization, setOrganization] = useState("");
   const [error, setError] = useState("");
   const [saved, setSaved] = useState(false);
 
@@ -60,7 +59,7 @@ export function JudgePage({ token }: { token: string }) {
     event.preventDefault();
     try {
       setError("");
-      setJudge(await resources.evaluation.identify(token, { name, email, organization }));
+      setJudge(await resources.evaluation.identify(token, { name, email }));
     } catch (err) {
       setError((err as Error).message);
     }
@@ -117,7 +116,6 @@ export function JudgePage({ token }: { token: string }) {
             <h2 className="text-xl font-black text-slate-950">Identificate como jurado</h2>
             <input className="input" placeholder="Nombre" value={name} onChange={(event) => setName(event.target.value)} required />
             <input className="input" placeholder="Email" type="email" value={email} onChange={(event) => setEmail(event.target.value)} required />
-            <input className="input" placeholder="Empresa o area (opcional)" value={organization} onChange={(event) => setOrganization(event.target.value)} />
             <button className="btn-primary" disabled={evaluation.status === "closed"}>
               Continuar
             </button>
