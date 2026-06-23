@@ -111,7 +111,7 @@ export function TeamsPage({ session }: { session: Session }) {
                   </div>
                 </div>
                 <p className="text-xs font-bold uppercase tracking-[0.12em] text-slate-400">
-                  Fuente: {insights.generated_by === "openai" ? "OpenAI" : "analisis local"}
+                  Fuente: {insights.generated_by === "openai" ? "OpenAI" : insights.generated_by === "ollama" ? "Ollama Cloud" : "analisis local"}
                 </p>
               </div>
             ) : null}

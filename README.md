@@ -111,10 +111,17 @@ OPENAI_API_KEY=sk-proj_xxx
 OPENAI_MODEL=gpt-4.1-mini
 ```
 
+Para usar Ollama Cloud en lugar de OpenAI, agrega estas variables:
+
+```env
+OLLAMA_CLOUD_API_KEY=tu_api_key_de_ollama
+OLLAMA_MODEL=llama2
+```
+
 El frontend nunca usa la API key directamente. La llamada es:
 
 ```txt
-React -> /api/sessions/{id}/teams/insights -> FastAPI -> OpenAI
+React -> /api/sessions/{id}/teams/insights -> FastAPI -> Ollama Cloud
 ```
 
 ## Evaluacion con jurados

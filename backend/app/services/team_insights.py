@@ -2,6 +2,8 @@ import json
 import os
 from typing import Any
 
+import httpx
+
 from app.schemas import TeamInsightsOut, TeamsResponse
 
 
@@ -44,6 +46,13 @@ def generate_fallback_team_insights(teams_response: TeamsResponse) -> TeamInsigh
 
 
 def generate_team_insights(teams_response: TeamsResponse) -> TeamInsightsOut:
+    ollama_api_key = os.environ.get("OLLAMA_CLOUD_API_KEY")
+    if ollama_api_key:
+        try:
+            return generate_ollama_team_insights(teams_response, ollama_api_key)
+        except Exception:
+            return generate_fallback_team_insights(teams_response)
+
     api_key = os.environ.get("OPENAI_API_KEY")
     if not api_key:
         return generate_fallback_team_insights(teams_response)
@@ -52,6 +61,57 @@ def generate_team_insights(teams_response: TeamsResponse) -> TeamInsightsOut:
         return generate_openai_team_insights(teams_response)
     except Exception:
         return generate_fallback_team_insights(teams_response)
+
+
+def generate_ollama_team_insights(teams_response: TeamsResponse, api_key: str) -> TeamInsightsOut:
+    model = os.environ.get("OLLAMA_MODEL", "llama2")
+    endpoint = f"https://cloud.ollama.com/predict/{model}"
+    payload = {
+        "balance": teams_response.balance.model_dump(),
+        "teams": [team.model_dump() for team in teams_response.teams],
+    }
+    prompt = f"""
+Actua como facilitador senior de workshops de innovacion con IA.
+Explica brevemente por que estos equipos estan balanceados para una dinamica corporativa.
+
+Datos:
+{json.dumps(payload, ensure_ascii=False)}
+
+Devuelve solo JSON valido con esta forma:
+{{
+  "summary": "parrafo breve",
+  "strengths": ["fortaleza 1", "fortaleza 2", "fortaleza 3"],
+  "recommendations": ["recomendacion 1", "recomendacion 2", "recomendacion 3"]
+}}
+"""
+    headers = {
+        "Authorization": f"Bearer {api_key}",
+        "Content-Type": "application/json",
+    }
+    with httpx.Client(timeout=30.0) as client:
+        response = client.post(endpoint, json={"prompt": prompt}, headers=headers)
+        response.raise_for_status()
+        data = response.json()
+
+    content = None
+    if isinstance(data, dict):
+        content = data.get("output") or data.get("text")
+        if content is None and isinstance(data.get("result"), list):
+            first_result = data["result"][0] if data["result"] else {}
+            if isinstance(first_result, dict):
+                content = first_result.get("content", {}).get("text") or first_result.get("output")
+    if content is None:
+        content = response.text
+    if isinstance(content, list):
+        content = "\n".join(str(item) for item in content)
+
+    parsed = json.loads(content)
+    return TeamInsightsOut(
+        summary=str(parsed.get("summary", "")).strip(),
+        strengths=[str(item).strip() for item in parsed.get("strengths", []) if str(item).strip()],
+        recommendations=[str(item).strip() for item in parsed.get("recommendations", []) if str(item).strip()],
+        generated_by="ollama",
+    )
 
 
 def generate_openai_team_insights(teams_response: TeamsResponse) -> TeamInsightsOut:
