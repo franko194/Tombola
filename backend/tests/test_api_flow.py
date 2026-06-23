@@ -216,3 +216,22 @@ def test_judge_can_register_before_evaluation_opens():
     refreshed = client.get(f"/sessions/{session['id']}/evaluation").json()
     assert len(refreshed["judges"]) == 1
     assert refreshed["judges"][0]["judge"]["email"] == "previo@example.com"
+
+
+def test_judge_can_register_with_name_only():
+    session = client.post("/sessions", json={"name": "Evaluacion sin correo", "date": "2026-06-27"}).json()
+    evaluation = client.post(f"/sessions/{session['id']}/evaluation/prepare").json()
+
+    judge = client.post(
+        f"/judge/{evaluation['token']}/identify",
+        json={"name": "Jurado Sin Correo"},
+    )
+
+    assert judge.status_code == 200
+    payload = judge.json()
+    assert payload["name"] == "Jurado Sin Correo"
+    assert payload["email"].endswith("@internal.judge")
+
+    refreshed = client.get(f"/sessions/{session['id']}/evaluation").json()
+    assert len(refreshed["judges"]) == 1
+    assert refreshed["judges"][0]["judge"]["name"] == "Jurado Sin Correo"

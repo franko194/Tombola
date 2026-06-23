@@ -67,7 +67,7 @@ const apiResources = {
     close: (sessionId: number) => api<Evaluation>(`/sessions/${sessionId}/evaluation/close`, { method: "POST" }),
     get: (sessionId: number) => api<Evaluation>(`/sessions/${sessionId}/evaluation`),
     publicGet: (token: string) => api<PublicEvaluation>(`/judge/${token}`),
-    identify: (token: string, payload: { name: string; email: string; organization?: string }) =>
+    identify: (token: string, payload: { name: string }) =>
       api<Judge>(`/judge/${token}/identify`, { method: "POST", json: payload }),
     scores: (token: string, judgeId: number) => api<JudgeScore[]>(`/judge/${token}/scores?judge_id=${judgeId}`),
     submitScores: (

@@ -122,7 +122,7 @@ class ResultsOut(BaseModel):
 
 class JudgeIdentifyRequest(BaseModel):
     name: str
-    email: str
+    email: str | None = None
     organization: str | None = None
 
 

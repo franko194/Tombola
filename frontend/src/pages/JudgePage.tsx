@@ -21,9 +21,10 @@ export function JudgePage({ token }: { token: string }) {
   const [draft, setDraft] = useState<ScoreDraft>({});
   const [comment, setComment] = useState("");
   const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
   const [error, setError] = useState("");
   const [saved, setSaved] = useState(false);
+  const [savedTeamName, setSavedTeamName] = useState<string | null>(null);
+  const [notification, setNotification] = useState<string | null>(null);
 
   async function load() {
     const data = await resources.evaluation.publicGet(token);
@@ -53,13 +54,20 @@ export function JudgePage({ token }: { token: string }) {
     }
     setDraft(nextDraft);
     setSaved(false);
+    setSavedTeamName(null);
   }, [evaluation, selectedTeamId, scores]);
+
+  useEffect(() => {
+    if (!notification) return;
+    const timeout = window.setTimeout(() => setNotification(null), 3500);
+    return () => window.clearTimeout(timeout);
+  }, [notification]);
 
   async function identify(event: React.FormEvent) {
     event.preventDefault();
     try {
       setError("");
-      setJudge(await resources.evaluation.identify(token, { name, email }));
+      setJudge(await resources.evaluation.identify(token, { name }));
     } catch (err) {
       setError((err as Error).message);
     }
@@ -81,6 +89,9 @@ export function JudgePage({ token }: { token: string }) {
       });
       setScores(submitted);
       setSaved(true);
+      const teamName = selectedTeam?.name ?? null;
+      setSavedTeamName(teamName);
+      setNotification(teamName ? `Puntuaste correctamente al equipo "${teamName}".` : "Puntuación guardada correctamente.");
     } catch (err) {
       setError((err as Error).message);
     }
@@ -115,7 +126,6 @@ export function JudgePage({ token }: { token: string }) {
           <form className="lab-surface grid gap-4 rounded-lg p-5" onSubmit={(event) => void identify(event)}>
             <h2 className="text-xl font-black text-slate-950">Identificate como jurado</h2>
             <input className="input" placeholder="Nombre" value={name} onChange={(event) => setName(event.target.value)} required />
-            <input className="input" placeholder="Email" type="email" value={email} onChange={(event) => setEmail(event.target.value)} required />
             <button className="btn-primary" disabled={evaluation.status === "closed"}>
               Continuar
             </button>
@@ -185,13 +195,29 @@ export function JudgePage({ token }: { token: string }) {
                   <Send size={18} />
                   Guardar puntuacion
                 </button>
-                {saved ? <p className="rounded-lg bg-teal-50 p-3 font-bold text-teal-800">Puntuacion guardada.</p> : null}
+                {saved ? (
+                  <p className="rounded-lg bg-teal-50 p-3 font-bold text-teal-800">
+                    Puntuaste correctamente al equipo {savedTeamName ? `"${savedTeamName}".` : ""}
+                  </p>
+                ) : null}
               </form>
             ) : null}
           </>
           )
         )}
       </main>
+      {notification ? (
+        <div className="fixed inset-x-0 bottom-4 z-50 flex justify-center px-4 sm:bottom-6">
+          <div className="w-full max-w-lg rounded-3xl border border-teal-100 bg-white/95 px-4 py-3 shadow-2xl shadow-teal-200/30 backdrop-blur-xl ring-1 ring-slate-200 sm:px-5">
+            <div className="flex items-center gap-3">
+              <span className="inline-flex h-11 w-11 items-center justify-center rounded-full bg-teal-600 text-white shadow-lg shadow-teal-500/20">
+                <CheckCircle2 size={20} />
+              </span>
+              <p className="text-sm font-semibold leading-6 text-slate-900">{notification}</p>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

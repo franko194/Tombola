@@ -1,37 +1,8 @@
 import { Clipboard, Lock, QrCode, RefreshCw, Trophy, Unlock } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { resources } from "../api/resources";
+import { buildJudgeUrl, buildQrCodeUrl, isLocalUrl } from "../lib/publicUrl";
 import type { Evaluation, Session } from "../types";
-
-const DEFAULT_PUBLIC_APP_URL = "https://tombola-rust.vercel.app";
-
-function getPublicAppUrl() {
-  const configuredUrl = import.meta.env.VITE_PUBLIC_APP_URL?.replace(/\/$/, "");
-  if (configuredUrl) return configuredUrl;
-
-  const currentHost = window.location.hostname;
-  const defaultHost = new URL(DEFAULT_PUBLIC_APP_URL).hostname;
-  if (currentHost.endsWith(".vercel.app") && currentHost !== defaultHost) {
-    return DEFAULT_PUBLIC_APP_URL;
-  }
-
-  return window.location.origin;
-}
-
-function buildJudgeUrl(token?: string, fallbackUrl?: string) {
-  if (!token) return fallbackUrl ?? "";
-  const baseUrl = getPublicAppUrl();
-  return `${baseUrl}/judge/${token}`;
-}
-
-function isLocalUrl(url: string) {
-  try {
-    const hostname = new URL(url).hostname;
-    return hostname === "localhost" || hostname === "127.0.0.1" || hostname === "::1";
-  } catch {
-    return false;
-  }
-}
 
 export function EvaluationPage({ session }: { session: Session }) {
   const [evaluation, setEvaluation] = useState<Evaluation | null>(null);
@@ -55,7 +26,7 @@ export function EvaluationPage({ session }: { session: Session }) {
 
   const qrUrl = useMemo(() => {
     if (!judgeUrl) return "";
-    return `https://api.qrserver.com/v1/create-qr-code/?size=260x260&data=${encodeURIComponent(judgeUrl)}`;
+    return buildQrCodeUrl(judgeUrl, 260);
   }, [judgeUrl]);
 
   const qrNeedsPublicUrl = judgeUrl ? isLocalUrl(judgeUrl) : false;
@@ -188,9 +159,7 @@ export function EvaluationPage({ session }: { session: Session }) {
                 {evaluation.judges.map((item) => (
                   <li key={item.judge.id} className="rounded-lg bg-slate-50 px-3 py-2">
                     <p className="font-black text-slate-900">{item.judge.name}</p>
-                    <p className="text-sm font-semibold text-slate-500">
-                      {item.judge.email} | equipos votados: {item.voted_teams}
-                    </p>
+                    <p className="text-sm font-semibold text-slate-500">Equipos votados: {item.voted_teams}</p>
                   </li>
                 ))}
                 {!evaluation.judges.length ? <li className="rounded-lg bg-slate-50 p-3 font-bold text-slate-500">Aun no hay jurados registrados.</li> : null}

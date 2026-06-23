@@ -2,37 +2,8 @@ import { BarChart3, Clipboard, ClipboardList, QrCode, Sparkles, Users } from "lu
 import { useEffect, useMemo, useState } from "react";
 import { resources } from "../api/resources";
 import { MetricCard } from "../components/MetricCard";
+import { buildJudgeUrl, buildQrCodeUrl, isLocalUrl } from "../lib/publicUrl";
 import type { Evaluation, PageKey, Participant, Session, Team, UseCase } from "../types";
-
-const DEFAULT_PUBLIC_APP_URL = "https://tombola-rust.vercel.app";
-
-function getPublicAppUrl() {
-  const configuredUrl = import.meta.env.VITE_PUBLIC_APP_URL?.replace(/\/$/, "");
-  if (configuredUrl) return configuredUrl;
-
-  const currentHost = window.location.hostname;
-  const defaultHost = new URL(DEFAULT_PUBLIC_APP_URL).hostname;
-  if (currentHost.endsWith(".vercel.app") && currentHost !== defaultHost) {
-    return DEFAULT_PUBLIC_APP_URL;
-  }
-
-  return window.location.origin;
-}
-
-function buildJudgeUrl(token?: string, fallbackUrl?: string) {
-  if (!token) return fallbackUrl ?? "";
-  const baseUrl = getPublicAppUrl();
-  return `${baseUrl}/judge/${token}`;
-}
-
-function isLocalUrl(url: string) {
-  try {
-    const hostname = new URL(url).hostname;
-    return hostname === "localhost" || hostname === "127.0.0.1" || hostname === "::1";
-  } catch {
-    return false;
-  }
-}
 
 export function DashboardPage({ session, onPageChange }: { session: Session; onPageChange: (page: PageKey) => void }) {
   const [participants, setParticipants] = useState<Participant[]>([]);
@@ -57,7 +28,7 @@ export function DashboardPage({ session, onPageChange }: { session: Session; onP
 
   const qrUrl = useMemo(() => {
     if (!judgeUrl) return "";
-    return `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(judgeUrl)}`;
+    return buildQrCodeUrl(judgeUrl, 180);
   }, [judgeUrl]);
 
   const qrNeedsPublicUrl = judgeUrl ? isLocalUrl(judgeUrl) : false;

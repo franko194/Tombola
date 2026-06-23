@@ -141,7 +141,7 @@ Flujo:
 
 1. Al entrar al dashboard de una sesion, la app prepara un QR de jurados.
 2. Comparte el QR o link con los jurados desde el inicio.
-3. Cada jurado entra a `/judge/{token}` y se identifica con nombre/email aunque la votacion aun no este abierta.
+3. Cada jurado entra a `/judge/{token}` y se identifica con nombre aunque la votacion aun no este abierta.
 4. Genera equipos y asigna casos.
 5. Abre la pestaña `Evaluacion` y presiona `Abrir votacion`.
 6. Los jurados actualizan la pantalla y puntuan equipos.

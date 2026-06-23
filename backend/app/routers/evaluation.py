@@ -1,5 +1,6 @@
 import os
 import secrets
+import re
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy import func
@@ -53,9 +54,6 @@ def public_base_url(request: Request | None = None) -> str:
         forwarded_host = request.headers.get("x-forwarded-host")
         host = forwarded_host or request.headers.get("host")
         if host:
-            default_host = DEFAULT_PUBLIC_APP_URL.removeprefix("https://").removeprefix("http://")
-            if host.endswith(".vercel.app") and host != default_host:
-                return DEFAULT_PUBLIC_APP_URL
             scheme = forwarded_proto or request.url.scheme or "https"
             return f"{scheme}://{host}".rstrip("/")
     return DEFAULT_PUBLIC_APP_URL
@@ -70,6 +68,11 @@ def get_evaluation_by_token(db: Session, token: str) -> SessionEvaluation:
     if not evaluation:
         raise HTTPException(status_code=404, detail="Evaluation not found")
     return evaluation
+
+
+def internal_judge_email(evaluation: SessionEvaluation, name: str) -> str:
+    slug = re.sub(r"[^a-z0-9]+", "-", name.strip().lower()).strip("-") or "jurado"
+    return f"judge-{evaluation.session_id}-{slug}@internal.judge"
 
 
 def ensure_default_criteria(db: Session, session_id: int) -> None:
@@ -254,14 +257,18 @@ def identify_judge(token: str, payload: JudgeIdentifyRequest, db: Session = Depe
     if evaluation.status == "closed":
         raise HTTPException(status_code=400, detail="Evaluation is closed")
 
-    email = payload.email.strip().lower()
+    name = payload.name.strip()
+    if not name:
+        raise HTTPException(status_code=400, detail="Name is required")
+
+    email = payload.email.strip().lower() if payload.email else internal_judge_email(evaluation, name)
     judge = db.query(Judge).filter(Judge.email == email).first()
     if judge:
-        judge.name = payload.name.strip()
+        judge.name = name
         judge.organization = payload.organization
         judge.updated_at = utc_now()
     else:
-        judge = Judge(name=payload.name.strip(), email=email, organization=payload.organization, active=True)
+        judge = Judge(name=name, email=email, organization=payload.organization, active=True)
         db.add(judge)
         db.flush()
 
