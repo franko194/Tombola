@@ -91,7 +91,7 @@ export function JudgePage({ token }: { token: string }) {
       setSaved(true);
       const teamName = selectedTeam?.name ?? null;
       setSavedTeamName(teamName);
-      setNotification(teamName ? `Puntuaste correctamente al equipo "${teamName}".` : "Puntuación guardada correctamente.");
+      setNotification(teamName ? `Puntuaste correctamente al equipo "${teamName}".` : "Puntuacion guardada correctamente.");
     } catch (err) {
       setError((err as Error).message);
     }
@@ -108,10 +108,10 @@ export function JudgePage({ token }: { token: string }) {
 
   return (
     <div className="min-h-screen bg-[#eef3f8]">
-      <main className="mx-auto grid max-w-3xl gap-5 px-4 py-5">
-        <section className="lab-surface rounded-lg p-5">
+      <main className="mx-auto grid w-full max-w-3xl gap-5 overflow-hidden px-4 py-5">
+        <section className="lab-surface min-w-0 rounded-lg p-5">
           <p className="text-xs font-black uppercase tracking-[0.18em] text-teal-700">Jurado IA Friday</p>
-          <h1 className="mt-2 text-3xl font-black text-slate-950">{evaluation.session.name}</h1>
+          <h1 className="mt-2 break-words text-2xl font-black leading-tight text-slate-950 sm:text-3xl">{evaluation.session.name}</h1>
           <p className="mt-1 font-semibold text-slate-500">{evaluation.session.date}</p>
           {evaluation.status === "prepared" ? (
             <p className="mt-3 rounded-lg bg-amber-50 p-3 font-bold text-amber-800">
@@ -123,7 +123,7 @@ export function JudgePage({ token }: { token: string }) {
         </section>
 
         {!judge ? (
-          <form className="lab-surface grid gap-4 rounded-lg p-5" onSubmit={(event) => void identify(event)}>
+          <form className="lab-surface grid min-w-0 gap-4 rounded-lg p-5" onSubmit={(event) => void identify(event)}>
             <h2 className="text-xl font-black text-slate-950">Identificate como jurado</h2>
             <input className="input" placeholder="Nombre" value={name} onChange={(event) => setName(event.target.value)} required />
             <button className="btn-primary" disabled={evaluation.status === "closed"}>
@@ -132,7 +132,7 @@ export function JudgePage({ token }: { token: string }) {
           </form>
         ) : (
           evaluation.status === "prepared" ? (
-            <section className="lab-surface rounded-lg p-5">
+            <section className="lab-surface min-w-0 rounded-lg p-5">
               <h2 className="text-xl font-black text-slate-950">Registro recibido</h2>
               <p className="mt-2 font-semibold text-slate-600">
                 Gracias, {judge.name}. Ya quedaste registrado como jurado para esta sesion. Cuando el organizador abra la votacion, actualiza esta pagina para puntuar los equipos.
@@ -140,7 +140,7 @@ export function JudgePage({ token }: { token: string }) {
             </section>
           ) : (
           <>
-            <section className="lab-surface rounded-lg p-5">
+            <section className="lab-surface min-w-0 rounded-lg p-5">
               <h2 className="text-xl font-black text-slate-950">Equipos</h2>
               <div className="mt-3 grid gap-2">
                 {evaluation.teams.map((team) => (
@@ -151,7 +151,7 @@ export function JudgePage({ token }: { token: string }) {
                     }`}
                     onClick={() => setSelectedTeamId(team.id)}
                   >
-                    <span>{team.name}</span>
+                    <span className="min-w-0 break-words">{team.name}</span>
                     {teamVoted(team) ? <CheckCircle2 size={18} className="text-teal-400" /> : null}
                   </button>
                 ))}
@@ -159,17 +159,17 @@ export function JudgePage({ token }: { token: string }) {
             </section>
 
             {selectedTeam ? (
-              <form className="lab-surface grid gap-4 rounded-lg p-5" onSubmit={(event) => void submit(event)}>
+              <form className="lab-surface grid min-w-0 gap-4 rounded-lg p-5" onSubmit={(event) => void submit(event)}>
                 <div>
-                  <h2 className="text-2xl font-black text-slate-950">{selectedTeam.name}</h2>
-                  <p className="font-semibold text-slate-500">
+                  <h2 className="break-words text-2xl font-black leading-tight text-slate-950">{selectedTeam.name}</h2>
+                  <p className="break-words font-semibold text-slate-500">
                     Caso: {assignmentByTeam.get(selectedTeam.id)?.use_case_title ?? "Sin caso asignado"}
                   </p>
                 </div>
                 {evaluation.criteria.map((criterion) => (
                   <label key={criterion.id} className="grid gap-2 font-bold text-slate-700">
-                    <span className="flex items-center justify-between">
-                      {criterion.name}
+                    <span className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+                      <span className="break-words">{criterion.name}</span>
                       <strong className="text-teal-800">
                         {draft[String(criterion.id)] ?? 3} - {scoreLabels[draft[String(criterion.id)] ?? 3]}
                       </strong>
@@ -181,7 +181,7 @@ export function JudgePage({ token }: { token: string }) {
                       value={draft[String(criterion.id)] ?? 3}
                       onChange={(event) => setDraft((current) => ({ ...current, [String(criterion.id)]: Number(event.target.value) }))}
                     />
-                    <div className="grid grid-cols-5 gap-1 text-center text-[11px] font-black uppercase tracking-[0.04em] text-slate-400">
+                    <div className="grid grid-cols-5 gap-1 text-center text-[10px] font-black uppercase tracking-[0.04em] text-slate-400 sm:text-[11px]">
                       <span>1 Very Bad</span>
                       <span>2 Insufficient</span>
                       <span>3 Acceptable</span>
