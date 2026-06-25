@@ -10,6 +10,8 @@ from app.schemas import TeamInsightsOut, TeamsResponse
 
 
 CLOUD_ERROR_FILE = Path(__file__).resolve().parents[1] / "last_cloud_error.txt"
+DEFAULT_CLOUD_AI_URL = "https://ollama.com/v1/chat/completions"
+DEFAULT_CLOUD_AI_MODEL = "minimax-m3:cloud"
 
 
 def load_dotenv() -> None:
@@ -30,6 +32,27 @@ def load_dotenv() -> None:
 
 
 load_dotenv()
+
+
+def first_env(*names: str) -> str:
+    for name in names:
+        value = os.environ.get(name, "").strip()
+        if value:
+            return value
+    return ""
+
+
+def get_cloud_config() -> tuple[str, str, str]:
+    api_key = first_env("CLOUD_AI_API_KEY", "OLLAMA_API_KEY", "OPENAI_API_KEY")
+    endpoint = first_env("CLOUD_AI_URL", "OLLAMA_CLOUD_URL", "OLLAMA_API_URL", "OPENAI_BASE_URL")
+    model = first_env("CLOUD_AI_MODEL", "OLLAMA_MODEL", "OPENAI_MODEL") or DEFAULT_CLOUD_AI_MODEL
+
+    if endpoint and endpoint.rstrip("/").endswith("/v1"):
+        endpoint = endpoint.rstrip("/") + "/chat/completions"
+    if api_key and not endpoint:
+        endpoint = DEFAULT_CLOUD_AI_URL
+
+    return endpoint, api_key, model
 
 
 def normalize_cloud_url(endpoint: str) -> str:
@@ -239,11 +262,10 @@ def generate_fallback_team_insights(teams_response: TeamsResponse) -> TeamInsigh
 
 
 def generate_team_insights(teams_response: TeamsResponse) -> TeamInsightsOut:
-    cloud_url = os.environ.get("CLOUD_AI_URL", "").strip()
-    cloud_api_key = os.environ.get("CLOUD_AI_API_KEY", "").strip()
+    cloud_url, cloud_api_key, cloud_model = get_cloud_config()
     if cloud_url and cloud_api_key:
         try:
-            return generate_cloud_team_insights(teams_response, cloud_api_key, cloud_url)
+            return generate_cloud_team_insights(teams_response, cloud_api_key, cloud_url, cloud_model)
         except Exception as exc:
             try:
                 with CLOUD_ERROR_FILE.open("w", encoding="utf-8") as f:
@@ -258,9 +280,9 @@ def generate_team_insights(teams_response: TeamsResponse) -> TeamInsightsOut:
     return generate_fallback_team_insights(teams_response)
 
 
-def generate_cloud_team_insights(teams_response: TeamsResponse, api_key: str, endpoint: str) -> TeamInsightsOut:
+def generate_cloud_team_insights(teams_response: TeamsResponse, api_key: str, endpoint: str, model: str | None = None) -> TeamInsightsOut:
     endpoint = normalize_cloud_url(endpoint)
-    model = os.environ.get("CLOUD_AI_MODEL", "minimax-m3:cloud")
+    model = model or first_env("CLOUD_AI_MODEL", "OLLAMA_MODEL", "OPENAI_MODEL") or DEFAULT_CLOUD_AI_MODEL
     payload = {
         "balance": teams_response.balance.model_dump(),
         "teams": [team.model_dump() for team in teams_response.teams],

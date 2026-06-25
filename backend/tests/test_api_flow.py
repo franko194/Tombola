@@ -223,8 +223,8 @@ def test_team_insights_use_cloud_ai_first_when_configured(monkeypatch):
     session_id = create_session_with_generated_teams()
     calls = []
 
-    def fake_cloud(teams_response, api_key, endpoint):
-        calls.append((api_key, endpoint, len(teams_response.teams)))
+    def fake_cloud(teams_response, api_key, endpoint, model=None):
+        calls.append((api_key, endpoint, model, len(teams_response.teams)))
         return TeamInsightsOut(
             summary="Explicacion generada por IA cloud.",
             strengths=["Fortaleza cloud"],
@@ -242,7 +242,35 @@ def test_team_insights_use_cloud_ai_first_when_configured(monkeypatch):
     body = response.json()
     assert body["generated_by"] == "cloud"
     assert body["summary"] == "Explicacion generada por IA cloud."
-    assert calls == [("test-key", "https://cloud.example.com/api", 3)]
+    assert calls == [("test-key", "https://cloud.example.com/api", "minimax-m3:cloud", 3)]
+
+
+def test_team_insights_accept_ollama_aliases(monkeypatch):
+    session_id = create_session_with_generated_teams()
+    calls = []
+
+    def fake_cloud(teams_response, api_key, endpoint, model=None):
+        calls.append((api_key, endpoint, model, len(teams_response.teams)))
+        return TeamInsightsOut(
+            summary="Explicacion generada por Ollama cloud.",
+            strengths=["Fortaleza cloud"],
+            recommendations=["Recomendacion cloud"],
+            generated_by="cloud",
+        )
+
+    monkeypatch.delenv("CLOUD_AI_URL", raising=False)
+    monkeypatch.delenv("CLOUD_AI_API_KEY", raising=False)
+    monkeypatch.delenv("CLOUD_AI_MODEL", raising=False)
+    monkeypatch.setenv("OLLAMA_API_KEY", "ollama-key")
+    monkeypatch.setenv("OLLAMA_MODEL", "minimax-m3:cloud")
+    monkeypatch.setattr(team_insights, "generate_cloud_team_insights", fake_cloud)
+
+    response = client.post(f"/sessions/{session_id}/teams/insights")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["generated_by"] == "cloud"
+    assert calls == [("ollama-key", "https://ollama.com/v1/chat/completions", "minimax-m3:cloud", 3)]
 
 
 def test_team_insights_fall_back_to_local_when_cloud_fails(monkeypatch):
