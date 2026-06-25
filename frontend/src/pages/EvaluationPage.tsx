@@ -97,7 +97,7 @@ export function EvaluationPage({ session }: { session: Session }) {
                 <h3 className="text-xl font-black text-slate-950">QR para jurados</h3>
               </div>
               <div className="mt-4 grid place-items-center rounded-lg bg-white p-4">
-                <JudgeQrCode url={judgeUrl} alt="QR de evaluacion para jurados" size={260} />
+                <JudgeQrCode url={judgeUrl} alt="QR de evaluacion para jurados" size={300} />
               </div>
               <div className="mt-3 rounded-lg bg-slate-50 p-3">
                 <p className="text-xs font-black uppercase tracking-[0.12em] text-slate-400">Destino del QR</p>
@@ -112,6 +112,9 @@ export function EvaluationPage({ session }: { session: Session }) {
                 <Clipboard size={18} />
                 Copiar link
               </button>
+              <a className="btn-secondary mt-3 w-full" href={judgeUrl || undefined} target="_blank" rel="noreferrer" aria-disabled={!judgeUrl}>
+                Abrir link
+              </a>
               <p className="mt-3 text-sm font-bold text-slate-500">
                 Estado: {evaluation.status === "open" ? "Abierta" : evaluation.status === "prepared" ? "Registro previo" : "Cerrada"}
               </p>

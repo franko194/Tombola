@@ -96,13 +96,16 @@ export function DashboardPage({ session, onPageChange }: { session: Session; onP
                 <Clipboard size={18} />
                 Copiar link
               </button>
+              <a className="btn-secondary" href={judgeUrl || undefined} target="_blank" rel="noreferrer" aria-disabled={!judgeUrl}>
+                Abrir link
+              </a>
               <button className="btn-primary" onClick={() => onPageChange("evaluation")}>
                 Ir a evaluacion
               </button>
             </div>
           </div>
           <div className="grid place-items-center rounded-lg bg-white p-4">
-            <JudgeQrCode url={judgeUrl} alt="QR para registro de jurados" size={180} />
+            <JudgeQrCode url={judgeUrl} alt="QR para registro de jurados" size={240} />
           </div>
         </div>
       </div>

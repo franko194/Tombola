@@ -17,10 +17,10 @@ export function JudgeQrCode({ url, size, alt }: { url: string; size: number; alt
 
     void QRCode.toDataURL(url, {
       width: size,
-      margin: 2,
+      margin: 4,
       errorCorrectionLevel: "H",
       color: {
-        dark: "#0f172a",
+        dark: "#000000",
         light: "#ffffff",
       },
     })
