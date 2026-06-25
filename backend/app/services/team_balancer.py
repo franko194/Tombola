@@ -1,5 +1,6 @@
 from dataclasses import dataclass, field
 from math import ceil
+from random import shuffle
 
 
 @dataclass
@@ -40,7 +41,9 @@ def generate_score_balanced_teams(
     if len(participants) < number_of_teams:
         raise ValueError("There must be at least one participant per team")
 
-    sorted_participants = sorted(participants, key=lambda item: item.ai_level, reverse=True)
+    shuffled_participants = list(participants)
+    shuffle(shuffled_participants)
+    sorted_participants = sorted(shuffled_participants, key=lambda item: item.ai_level, reverse=True)
     teams = [BalancedTeam(name=f"Equipo {chr(65 + index)}") for index in range(number_of_teams)]
     max_team_size = ceil(len(participants) / number_of_teams)
 
@@ -48,14 +51,11 @@ def generate_score_balanced_teams(
     # while respecting a max size so averages stay comparable and teams remain even.
     for participant in sorted_participants:
         available_teams = [team for team in teams if len(team.members) < max_team_size]
-        target_team = min(
-            available_teams,
-            key=lambda team: (
-                sum(member.ai_level for member in team.members),
-                len(team.members),
-                team.name,
-            ),
-        )
+        shuffle(available_teams)
+        best_score = min(sum(member.ai_level for member in team.members) for team in available_teams)
+        weakest_teams = [team for team in available_teams if sum(member.ai_level for member in team.members) == best_score]
+        best_size = min(len(team.members) for team in weakest_teams)
+        target_team = [team for team in weakest_teams if len(team.members) == best_size][0]
         target_team.members.append(participant)
 
     for team in teams:

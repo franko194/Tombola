@@ -103,7 +103,10 @@ export function EvaluationPage({ session }: { session: Session }) {
               <div className="mt-4 grid place-items-center rounded-lg bg-white p-4">
                 {qrUrl ? <img src={qrUrl} alt="QR de evaluacion para jurados" width={260} height={260} /> : null}
               </div>
-              <p className="mt-3 break-all rounded-lg bg-slate-50 p-3 text-sm font-bold text-slate-600">{judgeUrl}</p>
+              <div className="mt-3 rounded-lg bg-slate-50 p-3">
+                <p className="text-xs font-black uppercase tracking-[0.12em] text-slate-400">Destino del QR</p>
+                <p className="mt-1 break-all text-sm font-bold text-slate-600">{judgeUrl}</p>
+              </div>
               {qrNeedsPublicUrl ? (
                 <p className="mt-3 rounded-lg bg-amber-50 p-3 text-sm font-bold text-amber-800">
                   Este QR usa localhost. Para abrirlo desde otro dispositivo, usa la URL desplegada en Vercel o configura VITE_PUBLIC_APP_URL.

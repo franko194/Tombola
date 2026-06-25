@@ -54,6 +54,8 @@ const apiResources = {
     list: (sessionId: number) => api<TeamsResponse>(`/sessions/${sessionId}/teams`),
     generate: (sessionId: number, number_of_teams: number) =>
       api<TeamsResponse>(`/sessions/${sessionId}/teams/generate`, { method: "POST", json: { number_of_teams } }),
+    updateManual: (sessionId: number, payload: { teams: Array<{ team_id: number; participant_ids: number[] }> }) =>
+      api<TeamsResponse>(`/sessions/${sessionId}/teams/manual`, { method: "PUT", json: payload }),
     insights: (sessionId: number) => api<TeamInsights>(`/sessions/${sessionId}/teams/insights`, { method: "POST" }),
   },
   results: {

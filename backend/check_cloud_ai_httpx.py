@@ -1,12 +1,18 @@
 import httpx
+import os
 
-url = 'https://ollama.com/v1/chat/completions'
+url = os.environ.get("CLOUD_AI_URL")
+api_key = os.environ.get("CLOUD_AI_API_KEY")
+model = os.environ.get("CLOUD_AI_MODEL", "minimax-m3:cloud")
+if not url or not api_key:
+    raise SystemExit("Missing CLOUD_AI_URL or CLOUD_AI_API_KEY")
+
 headers = {
-    'Authorization': 'Bearer tu_api_key_de_ia_aqui',
+    'Authorization': f'Bearer {api_key}',
     'Content-Type': 'application/json',
 }
 payload = {
-    'model': 'minimax-m3:cloud',
+    'model': model,
     'messages': [{'role': 'user', 'content': 'Actua como facilitador senior de workshops de innovacion con IA y responde solo con un JSON de prueba'}],
     'temperature': 0.3,
 }

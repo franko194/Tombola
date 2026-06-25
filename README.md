@@ -104,24 +104,20 @@ La pantalla de equipos puede generar una explicacion inteligente del balance.
 
 Sin configurar nada, la app usa una explicacion local calculada desde promedios y scores.
 
-Para usar OpenAI, agrega estas variables en Vercel:
+Para usar IA cloud, agrega estas variables en el backend:
 
 ```env
-OPENAI_API_KEY=sk-proj_xxx
-OPENAI_MODEL=gpt-4.1-mini
+CLOUD_AI_URL=https://tu-endpoint-cloud.example.com/api
+CLOUD_AI_API_KEY=tu_api_key_de_ia
+CLOUD_AI_MODEL=minimax-m3:cloud
 ```
 
-Para usar Ollama Cloud en lugar de OpenAI, agrega estas variables:
-
-```env
-OLLAMA_CLOUD_API_KEY=tu_api_key_de_ollama
-OLLAMA_MODEL=llama2
-```
+La app siempre intenta primero `CLOUD_AI_URL` con `CLOUD_AI_API_KEY`. Si esa llamada falla, vuelve automaticamente a la explicacion local.
 
 El frontend nunca usa la API key directamente. La llamada es:
 
 ```txt
-React -> /api/sessions/{id}/teams/insights -> FastAPI -> Ollama Cloud
+React -> /api/sessions/{id}/teams/insights -> FastAPI -> IA cloud -> fallback local si falla
 ```
 
 ## Evaluacion con jurados

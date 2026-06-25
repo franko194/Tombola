@@ -83,7 +83,12 @@ export function DashboardPage({ session, onPageChange }: { session: Session; onP
             <p className="mt-2 max-w-2xl font-medium text-slate-600">
               Comparte este QR desde el inicio. Los jurados pueden registrarse antes de abrir la votacion y quedaran asociados a esta fecha.
             </p>
-            {judgeUrl ? <p className="mt-3 break-all rounded-lg bg-slate-50 p-3 text-sm font-bold text-slate-600">{judgeUrl}</p> : null}
+            {judgeUrl ? (
+              <div className="mt-3 rounded-lg bg-slate-50 p-3">
+                <p className="text-xs font-black uppercase tracking-[0.12em] text-slate-400">Destino del QR</p>
+                <p className="mt-1 break-all text-sm font-bold text-slate-600">{judgeUrl}</p>
+              </div>
+            ) : null}
             {qrNeedsPublicUrl ? (
               <p className="mt-3 rounded-lg bg-amber-50 p-3 text-sm font-bold text-amber-800">
                 Este QR usa localhost. Para escanearlo desde un celular, abre la app desplegada en Vercel o configura VITE_PUBLIC_APP_URL con una URL publica.

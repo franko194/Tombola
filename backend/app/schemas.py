@@ -68,6 +68,15 @@ class TeamGenerateRequest(BaseModel):
     number_of_teams: int = Field(ge=1)
 
 
+class ManualTeamIn(BaseModel):
+    team_id: int
+    participant_ids: list[int]
+
+
+class ManualTeamsUpdate(BaseModel):
+    teams: list[ManualTeamIn] = Field(min_length=1)
+
+
 class TeamMemberOut(BaseModel):
     id: int
     name: str

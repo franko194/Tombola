@@ -6,6 +6,8 @@ from fastapi.testclient import TestClient
 
 from app.database import Base, engine
 from app.main import app
+from app.schemas import TeamInsightsOut
+from app.services import team_insights
 
 
 client = TestClient(app)
@@ -132,8 +134,81 @@ def test_assign_use_cases_repeats_cases_when_there_are_more_teams_than_cases():
     assert len(set(use_case_ids)) == 3
 
 
-def test_team_insights_use_local_fallback_without_openai_key(monkeypatch):
-    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+def test_manual_team_update_moves_members_and_clears_assignments():
+    session = client.post("/sessions", json={"name": "Equipos editables", "date": "2026-06-26"}).json()
+    for name, level in [("Ana", 5), ("Ben", 4), ("Cata", 1), ("Diego", 0)]:
+        client.post(f"/sessions/{session['id']}/participants", json={"name": name, "ai_level": level})
+    client.post(f"/sessions/{session['id']}/use-cases", json={"title": "Caso A"})
+    client.post(f"/sessions/{session['id']}/use-cases", json={"title": "Caso B"})
+
+    generated = client.post(f"/sessions/{session['id']}/teams/generate", json={"number_of_teams": 2}).json()
+    client.post(f"/sessions/{session['id']}/use-cases/assign", json={"mode": "random"})
+    assert len(client.get(f"/sessions/{session['id']}/results").json()["assignments"]) == 2
+
+    first_team, second_team = generated["teams"]
+    first_member = first_team["members"][0]
+    second_member = second_team["members"][0]
+    payload = {
+        "teams": [
+            {
+                "team_id": first_team["id"],
+                "participant_ids": [member["id"] for member in first_team["members"] if member["id"] != first_member["id"]] + [second_member["id"]],
+            },
+            {
+                "team_id": second_team["id"],
+                "participant_ids": [member["id"] for member in second_team["members"] if member["id"] != second_member["id"]] + [first_member["id"]],
+            },
+        ]
+    }
+
+    response = client.put(f"/sessions/{session['id']}/teams/manual", json=payload)
+
+    assert response.status_code == 200
+    body = response.json()
+    assert [member["id"] for member in body["teams"][0]["members"]] == payload["teams"][0]["participant_ids"]
+    assert body["teams"][0]["total_ai_score"] == sum(member["ai_level"] for member in body["teams"][0]["members"])
+    assert len(client.get(f"/sessions/{session['id']}/results").json()["assignments"]) == 0
+
+
+def test_manual_team_update_rejects_missing_participant():
+    session = client.post("/sessions", json={"name": "Equipos invalidos", "date": "2026-06-26"}).json()
+    for name, level in [("Ana", 5), ("Ben", 4), ("Cata", 1)]:
+        client.post(f"/sessions/{session['id']}/participants", json={"name": name, "ai_level": level})
+    generated = client.post(f"/sessions/{session['id']}/teams/generate", json={"number_of_teams": 2}).json()
+
+    response = client.put(
+        f"/sessions/{session['id']}/teams/manual",
+        json={
+            "teams": [
+                {"team_id": generated["teams"][0]["id"], "participant_ids": [generated["teams"][0]["members"][0]["id"]]},
+                {"team_id": generated["teams"][1]["id"], "participant_ids": []},
+            ]
+        },
+    )
+
+    assert response.status_code == 400
+    assert response.json()["detail"] == "All session participants must be assigned exactly once"
+
+
+def test_regenerate_teams_replaces_existing_distribution_and_clears_assignments():
+    session = client.post("/sessions", json={"name": "Regenerar equipos", "date": "2026-06-26"}).json()
+    for index, level in enumerate([5, 4, 3, 2, 1, 0], start=1):
+        client.post(f"/sessions/{session['id']}/participants", json={"name": f"P{index}", "ai_level": level})
+    for title in ["Caso A", "Caso B", "Caso C"]:
+        client.post(f"/sessions/{session['id']}/use-cases", json={"title": title})
+
+    first = client.post(f"/sessions/{session['id']}/teams/generate", json={"number_of_teams": 2}).json()
+    client.post(f"/sessions/{session['id']}/use-cases/assign", json={"mode": "random"})
+    assert len(client.get(f"/sessions/{session['id']}/results").json()["assignments"]) == 2
+
+    second = client.post(f"/sessions/{session['id']}/teams/generate", json={"number_of_teams": 3}).json()
+
+    assert len(first["teams"]) == 2
+    assert len(second["teams"]) == 3
+    assert len(client.get(f"/sessions/{session['id']}/results").json()["assignments"]) == 0
+
+
+def create_session_with_generated_teams() -> int:
     session = client.post("/sessions", json={"name": "Insights session", "date": "2026-06-26"}).json()
     for index, level in enumerate([5, 4, 3, 2, 1, 0], start=1):
         client.post(
@@ -141,8 +216,46 @@ def test_team_insights_use_local_fallback_without_openai_key(monkeypatch):
             json={"name": f"Participante {index}", "ai_level": level},
         )
     client.post(f"/sessions/{session['id']}/teams/generate", json={"number_of_teams": 3})
+    return session["id"]
 
-    response = client.post(f"/sessions/{session['id']}/teams/insights")
+
+def test_team_insights_use_cloud_ai_first_when_configured(monkeypatch):
+    session_id = create_session_with_generated_teams()
+    calls = []
+
+    def fake_cloud(teams_response, api_key, endpoint):
+        calls.append((api_key, endpoint, len(teams_response.teams)))
+        return TeamInsightsOut(
+            summary="Explicacion generada por IA cloud.",
+            strengths=["Fortaleza cloud"],
+            recommendations=["Recomendacion cloud"],
+            generated_by="cloud",
+        )
+
+    monkeypatch.setenv("CLOUD_AI_URL", "https://cloud.example.com/api")
+    monkeypatch.setenv("CLOUD_AI_API_KEY", "test-key")
+    monkeypatch.setattr(team_insights, "generate_cloud_team_insights", fake_cloud)
+
+    response = client.post(f"/sessions/{session_id}/teams/insights")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["generated_by"] == "cloud"
+    assert body["summary"] == "Explicacion generada por IA cloud."
+    assert calls == [("test-key", "https://cloud.example.com/api", 3)]
+
+
+def test_team_insights_fall_back_to_local_when_cloud_fails(monkeypatch):
+    session_id = create_session_with_generated_teams()
+
+    def failing_cloud(*_args, **_kwargs):
+        raise RuntimeError("cloud unavailable")
+
+    monkeypatch.setenv("CLOUD_AI_URL", "https://cloud.example.com/api")
+    monkeypatch.setenv("CLOUD_AI_API_KEY", "test-key")
+    monkeypatch.setattr(team_insights, "generate_cloud_team_insights", failing_cloud)
+
+    response = client.post(f"/sessions/{session_id}/teams/insights")
 
     assert response.status_code == 200
     body = response.json()
@@ -150,6 +263,19 @@ def test_team_insights_use_local_fallback_without_openai_key(monkeypatch):
     assert body["summary"]
     assert len(body["strengths"]) >= 1
     assert len(body["recommendations"]) >= 1
+
+
+def test_team_insights_use_local_fallback_without_cloud_config(monkeypatch):
+    session_id = create_session_with_generated_teams()
+    monkeypatch.delenv("CLOUD_AI_URL", raising=False)
+    monkeypatch.delenv("CLOUD_AI_API_KEY", raising=False)
+
+    response = client.post(f"/sessions/{session_id}/teams/insights")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["generated_by"] == "local"
+    assert body["summary"]
 
 
 def test_evaluation_flow_registers_judge_scores_and_ranking():
@@ -216,6 +342,17 @@ def test_judge_can_register_before_evaluation_opens():
     refreshed = client.get(f"/sessions/{session['id']}/evaluation").json()
     assert len(refreshed["judges"]) == 1
     assert refreshed["judges"][0]["judge"]["email"] == "previo@example.com"
+
+
+def test_prepare_evaluation_is_idempotent():
+    session = client.post("/sessions", json={"name": "QR idempotente", "date": "2026-06-27"}).json()
+
+    first = client.post(f"/sessions/{session['id']}/evaluation/prepare")
+    second = client.post(f"/sessions/{session['id']}/evaluation/prepare")
+
+    assert first.status_code == 200
+    assert second.status_code == 200
+    assert first.json()["token"] == second.json()["token"]
 
 
 def test_judge_can_register_with_name_only():

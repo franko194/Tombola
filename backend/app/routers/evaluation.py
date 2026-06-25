@@ -3,6 +3,7 @@ import secrets
 import re
 
 from fastapi import APIRouter, Depends, HTTPException, Request
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
@@ -179,7 +180,13 @@ def get_or_create_evaluation(db: Session, session_id: int, status: str = "prepar
     if not evaluation:
         evaluation = SessionEvaluation(session_id=session_id, token=secrets.token_urlsafe(8), status=status)
         db.add(evaluation)
-        db.flush()
+        try:
+            db.flush()
+        except IntegrityError:
+            db.rollback()
+            evaluation = db.query(SessionEvaluation).filter(SessionEvaluation.session_id == session_id).first()
+            if not evaluation:
+                raise
     ensure_default_criteria(db, session_id)
     return evaluation
 

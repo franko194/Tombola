@@ -20,10 +20,13 @@ teams_response = TeamsResponse(
     balance=BalanceOut(highest_average=3.5, lowest_average=3.5, average_gap=0.0),
 )
 
-cloud_url = os.environ.get("CLOUD_AI_URL") or "https://ollama.com/v1/chat/completions"
-cloud_api_key = os.environ.get("CLOUD_AI_API_KEY") or "tu_api_key_de_ia_aqui"
+cloud_url = os.environ.get("CLOUD_AI_URL")
+cloud_api_key = os.environ.get("CLOUD_AI_API_KEY")
+if not cloud_url or not cloud_api_key:
+    raise SystemExit("Missing CLOUD_AI_URL or CLOUD_AI_API_KEY")
+
 print("CLOUD_AI_URL:", cloud_url)
-print("CLOUD_AI_API_KEY:", cloud_api_key)
+print("CLOUD_AI_API_KEY:", "***configured***")
 print("Normalized endpoint:", normalize_cloud_url(cloud_url))
 try:
     result = generate_cloud_team_insights(teams_response, cloud_api_key, cloud_url)

@@ -4,10 +4,12 @@ from pathlib import Path
 from typing import Any
 
 import httpx
-import certifi
 import re
 
 from app.schemas import TeamInsightsOut, TeamsResponse
+
+
+CLOUD_ERROR_FILE = Path(__file__).resolve().parents[1] / "last_cloud_error.txt"
 
 
 def load_dotenv() -> None:
@@ -237,27 +239,22 @@ def generate_fallback_team_insights(teams_response: TeamsResponse) -> TeamInsigh
 
 
 def generate_team_insights(teams_response: TeamsResponse) -> TeamInsightsOut:
-    # Prefer the explicitly configured cloud AI endpoint. If it's present
-    # attempt a call and only fall back to the local deterministic generator
-    # when the cloud call fails. Do not try other providers automatically.
-    cloud_url = os.environ.get("CLOUD_AI_URL")
-    cloud_api_key = os.environ.get("CLOUD_AI_API_KEY")
+    cloud_url = os.environ.get("CLOUD_AI_URL", "").strip()
+    cloud_api_key = os.environ.get("CLOUD_AI_API_KEY", "").strip()
     if cloud_url and cloud_api_key:
         try:
             return generate_cloud_team_insights(teams_response, cloud_api_key, cloud_url)
         except Exception as exc:
             try:
-                err_path = Path(__file__).resolve().parent.parent / 'last_cloud_error.txt'
-                with open(err_path, 'w', encoding='utf-8') as f:
+                with CLOUD_ERROR_FILE.open("w", encoding="utf-8") as f:
                     import traceback
 
-                    f.write('Cloud AI call failed:\n')
+                    f.write("Cloud AI call failed. Falling back to local insights.\n")
                     traceback.print_exception(type(exc), exc, exc.__traceback__, file=f)
             except Exception:
                 pass
             return generate_fallback_team_insights(teams_response)
 
-    # No cloud AI configured: use local fallback only.
     return generate_fallback_team_insights(teams_response)
 
 
@@ -317,102 +314,4 @@ Devuelve solo JSON valido con esta forma:
         strengths=[str(item).strip() for item in parsed.get("strengths", []) if str(item).strip()],
         recommendations=[str(item).strip() for item in parsed.get("recommendations", []) if str(item).strip()],
         generated_by="cloud",
-    )
-
-
-def generate_ollama_team_insights(teams_response: TeamsResponse, api_key: str) -> TeamInsightsOut:
-    model = os.environ.get("OLLAMA_MODEL", "llama2")
-    endpoint = f"https://cloud.ollama.com/predict/{model}"
-    payload = {
-        "balance": teams_response.balance.model_dump(),
-        "teams": [team.model_dump() for team in teams_response.teams],
-    }
-    prompt = f"""
-Actua como facilitador senior de workshops de innovacion con IA.
-Explica brevemente por que estos equipos estan balanceados para una dinamica corporativa.
-
-Datos:
-{json.dumps(payload, ensure_ascii=False)}
-
-Devuelve solo JSON valido con esta forma:
-{{
-  "summary": "parrafo breve",
-  "strengths": ["fortaleza 1", "fortaleza 2", "fortaleza 3"],
-  "recommendations": ["recomendacion 1", "recomendacion 2", "recomendacion 3"]
-}}
-"""
-    headers = {
-        "Authorization": f"Bearer {api_key}",
-        "Content-Type": "application/json",
-    }
-    # Force skipping TLS verification per user request
-    verify_value = False
-    with httpx.Client(timeout=60.0, verify=verify_value) as client:
-        response = client.post(endpoint, json=request_body, headers=headers)
-        data = response.json()
-
-    # persist raw cloud response for debugging
-    try:
-        debug_path = Path(__file__).resolve().parent.parent / 'cloud_last_response.txt'
-        with open(debug_path, 'w', encoding='utf-8') as f:
-            f.write(response.text)
-    except Exception:
-        pass
-
-    parsed = parse_cloud_response(data, response.text)
-
-    content = None
-    if isinstance(data, dict):
-        content = data.get("output") or data.get("text")
-        if content is None and isinstance(data.get("result"), list):
-            first_result = data["result"][0] if data["result"] else {}
-            if isinstance(first_result, dict):
-                content = first_result.get("content", {}).get("text") or first_result.get("output")
-    if content is None:
-        content = response.text
-    if isinstance(content, list):
-        content = "\n".join(str(item) for item in content)
-
-    parsed = json.loads(content)
-    return TeamInsightsOut(
-        summary=str(parsed.get("summary", "")).strip(),
-        strengths=[str(item).strip() for item in parsed.get("strengths", []) if str(item).strip()],
-        recommendations=[str(item).strip() for item in parsed.get("recommendations", []) if str(item).strip()],
-        generated_by="ollama",
-    )
-
-
-def generate_openai_team_insights(teams_response: TeamsResponse) -> TeamInsightsOut:
-    from openai import OpenAI
-
-    client = OpenAI()
-    payload = {
-        "balance": teams_response.balance.model_dump(),
-        "teams": [team.model_dump() for team in teams_response.teams],
-    }
-    prompt = f"""
-Actua como facilitador senior de workshops de innovacion con IA.
-Explica brevemente por que estos equipos estan balanceados para una dinamica corporativa.
-
-Datos:
-{json.dumps(payload, ensure_ascii=False)}
-
-Devuelve solo JSON valido con esta forma:
-{{
-  "summary": "parrafo breve",
-  "strengths": ["fortaleza 1", "fortaleza 2", "fortaleza 3"],
-  "recommendations": ["recomendacion 1", "recomendacion 2", "recomendacion 3"]
-}}
-"""
-    response = client.responses.create(
-        model=os.environ.get("OPENAI_MODEL", "gpt-4.1-mini"),
-        input=prompt,
-    )
-    content = getattr(response, "output_text", "")
-    parsed: dict[str, Any] = json.loads(content)
-    return TeamInsightsOut(
-        summary=str(parsed.get("summary", "")).strip(),
-        strengths=[str(item).strip() for item in parsed.get("strengths", []) if str(item).strip()],
-        recommendations=[str(item).strip() for item in parsed.get("recommendations", []) if str(item).strip()],
-        generated_by="openai",
     )

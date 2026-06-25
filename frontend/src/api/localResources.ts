@@ -153,7 +153,7 @@ function generateBalancedTeams(store: Store, sessionId: number, numberOfTeams: n
   const participants = store.participants.filter((item) => item.session_id === sessionId);
   if (participants.length < numberOfTeams) throw new Error("There must be at least one participant per team");
 
-  const sortedParticipants = [...participants].sort((left, right) => right.ai_level - left.ai_level);
+  const sortedParticipants = shuffle(participants).sort((left, right) => right.ai_level - left.ai_level);
   const maxTeamSize = Math.ceil(participants.length / numberOfTeams);
   const teams: Team[] = Array.from({ length: numberOfTeams }, (_, index) => ({
     id: nextId(store),
@@ -165,12 +165,10 @@ function generateBalancedTeams(store: Store, sessionId: number, numberOfTeams: n
 
   for (const participant of sortedParticipants) {
     const availableTeams = teams.filter((team) => team.members.length < maxTeamSize);
-    const targetTeam = availableTeams.sort(
-      (left, right) =>
-        left.total_ai_score - right.total_ai_score ||
-        left.members.length - right.members.length ||
-        left.name.localeCompare(right.name),
-    )[0];
+    const weakestScore = Math.min(...availableTeams.map((team) => team.total_ai_score));
+    const weakestTeams = shuffle(availableTeams.filter((team) => team.total_ai_score === weakestScore));
+    const smallestSize = Math.min(...weakestTeams.map((team) => team.members.length));
+    const targetTeam = weakestTeams.find((team) => team.members.length === smallestSize) as Team;
     targetTeam.members.push({ id: participant.id, name: participant.name, ai_level: participant.ai_level });
     recalculateTeam(targetTeam);
   }
@@ -430,6 +428,47 @@ export const localResources = {
       ),
     generate: (sessionId: number, numberOfTeams: number) =>
       Promise.resolve(withStore((store) => generateBalancedTeams(store, sessionId, numberOfTeams))),
+    updateManual: (sessionId: number, payload: { teams: Array<{ team_id: number; participant_ids: number[] }> }) =>
+      Promise.resolve(
+        withStore((store) => {
+          const teams = store.teamsBySession[String(sessionId)] ?? [];
+          if (!teams.length) throw new Error("Generate teams before editing them");
+
+          const teamById = new Map(teams.map((team) => [team.id, team]));
+          const requestedTeamIds = payload.teams.map((team) => team.team_id);
+          if (new Set(requestedTeamIds).size !== requestedTeamIds.length) {
+            throw new Error("Team ids must be unique");
+          }
+          if (requestedTeamIds.length !== teams.length || requestedTeamIds.some((id) => !teamById.has(id))) {
+            throw new Error("All session teams must be included");
+          }
+          const participants = store.participants.filter((item) => item.session_id === sessionId);
+          const participantById = new Map(participants.map((participant) => [participant.id, participant]));
+          const requestedIds = payload.teams.flatMap((team) => team.participant_ids);
+          if (new Set(requestedIds).size !== requestedIds.length) {
+            throw new Error("A participant cannot be assigned to more than one team");
+          }
+          if (requestedIds.length !== participants.length || requestedIds.some((id) => !participantById.has(id))) {
+            throw new Error("All session participants must be assigned exactly once");
+          }
+
+          for (const item of payload.teams) {
+            const team = teamById.get(item.team_id);
+            if (!team) throw new Error("All teams must belong to this session");
+            team.members = item.participant_ids.map((id) => {
+              const participant = participantById.get(id);
+              if (!participant) throw new Error("All session participants must be assigned exactly once");
+              return { id: participant.id, name: participant.name, ai_level: participant.ai_level };
+            });
+            recalculateTeam(team);
+          }
+
+          store.assignmentsBySession[String(sessionId)] = [];
+          delete store.snapshotsBySession[String(sessionId)];
+          updateSessionStatus(store, sessionId, "teams_generated");
+          return { teams, balance: buildBalance(teams) };
+        }),
+      ),
     insights: (sessionId: number) =>
       Promise.resolve(
         withStore((store) => {

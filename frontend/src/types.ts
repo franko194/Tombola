@@ -50,7 +50,7 @@ export type TeamInsights = {
   summary: string;
   strengths: string[];
   recommendations: string[];
-  generated_by: "local" | "openai" | string;
+  generated_by: "cloud" | "local" | string;
 };
 
 export type Assignment = {

@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.models import Assignment, Participant, SessionModel, Team, TeamMember, utc_now
-from app.schemas import BalanceOut, TeamGenerateRequest, TeamMemberOut, TeamOut, TeamsResponse
+from app.schemas import BalanceOut, ManualTeamsUpdate, TeamGenerateRequest, TeamMemberOut, TeamOut, TeamsResponse
 from app.services.team_balancer import ParticipantInput, generate_snake_draft_teams
 
 router = APIRouter(tags=["teams"])
@@ -86,4 +86,51 @@ def generate_teams(
 def list_teams(session_id: int, db: Session = Depends(get_db)) -> TeamsResponse:
     if not db.get(SessionModel, session_id):
         raise HTTPException(status_code=404, detail="Session not found")
+    return serialize_teams(db, session_id)
+
+
+@router.put("/sessions/{session_id}/teams/manual", response_model=TeamsResponse)
+def update_teams_manually(
+    session_id: int,
+    payload: ManualTeamsUpdate,
+    db: Session = Depends(get_db),
+) -> TeamsResponse:
+    session = db.get(SessionModel, session_id)
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found")
+
+    teams = {team.id: team for team in db.query(Team).filter(Team.session_id == session_id).all()}
+    if not teams:
+        raise HTTPException(status_code=400, detail="Generate teams before editing them")
+
+    requested_team_ids = [team.team_id for team in payload.teams]
+    if len(requested_team_ids) != len(set(requested_team_ids)):
+        raise HTTPException(status_code=400, detail="Team ids must be unique")
+    invalid_team_ids = [team_id for team_id in requested_team_ids if team_id not in teams]
+    if invalid_team_ids:
+        raise HTTPException(status_code=400, detail="All teams must belong to this session")
+    if set(requested_team_ids) != set(teams.keys()):
+        raise HTTPException(status_code=400, detail="All session teams must be included")
+
+    participants = {item.id: item for item in db.query(Participant).filter(Participant.session_id == session_id).all()}
+    requested_participant_ids = [participant_id for team in payload.teams for participant_id in team.participant_ids]
+    if len(requested_participant_ids) != len(set(requested_participant_ids)):
+        raise HTTPException(status_code=400, detail="A participant cannot be assigned to more than one team")
+    if set(requested_participant_ids) != set(participants.keys()):
+        raise HTTPException(status_code=400, detail="All session participants must be assigned exactly once")
+
+    db.query(Assignment).filter(Assignment.session_id == session_id).delete()
+    db.query(TeamMember).filter(TeamMember.team_id.in_(list(teams.keys()))).delete(synchronize_session=False)
+
+    for item in payload.teams:
+        team = teams[item.team_id]
+        members = [participants[participant_id] for participant_id in item.participant_ids]
+        team.total_ai_score = sum(member.ai_level for member in members)
+        team.average_ai_level = round(team.total_ai_score / len(members), 2) if members else 0
+        for participant_id in item.participant_ids:
+            db.add(TeamMember(team_id=team.id, participant_id=participant_id))
+
+    session.status = "teams_generated"
+    session.updated_at = utc_now()
+    db.commit()
     return serialize_teams(db, session_id)
