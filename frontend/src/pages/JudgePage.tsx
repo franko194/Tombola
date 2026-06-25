@@ -168,9 +168,9 @@ export function JudgePage({ token }: { token: string }) {
                 </div>
                 {evaluation.criteria.map((criterion) => (
                   <label key={criterion.id} className="grid gap-2 font-bold text-slate-700">
-                    <span className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
-                      <span className="break-words">{criterion.name}</span>
-                      <strong className="text-teal-800">
+                    <span className="grid gap-1">
+                      <span className="break-words text-base leading-5">{criterion.name}</span>
+                      <strong className="rounded-md bg-teal-50 px-2 py-1 text-sm leading-5 text-teal-800">
                         {draft[String(criterion.id)] ?? 3} - {scoreLabels[draft[String(criterion.id)] ?? 3]}
                       </strong>
                     </span>
@@ -181,12 +181,27 @@ export function JudgePage({ token }: { token: string }) {
                       value={draft[String(criterion.id)] ?? 3}
                       onChange={(event) => setDraft((current) => ({ ...current, [String(criterion.id)]: Number(event.target.value) }))}
                     />
-                    <div className="grid grid-cols-5 gap-1 text-center text-[10px] font-black uppercase tracking-[0.04em] text-slate-400 sm:text-[11px]">
-                      <span>1 Very Bad</span>
-                      <span>2 Insufficient</span>
-                      <span>3 Acceptable</span>
-                      <span>4 Good</span>
-                      <span>5 Very Good</span>
+                    <div className="grid grid-cols-5 gap-1 text-center text-[11px] font-black uppercase tracking-0 text-slate-400">
+                      <span>
+                        <span className="block text-slate-500">1</span>
+                        <span className="hidden sm:block">Very Bad</span>
+                      </span>
+                      <span>
+                        <span className="block text-slate-500">2</span>
+                        <span className="hidden sm:block">Insufficient</span>
+                      </span>
+                      <span>
+                        <span className="block text-slate-500">3</span>
+                        <span className="hidden sm:block">Acceptable</span>
+                      </span>
+                      <span>
+                        <span className="block text-slate-500">4</span>
+                        <span className="hidden sm:block">Good</span>
+                      </span>
+                      <span>
+                        <span className="block text-slate-500">5</span>
+                        <span className="hidden sm:block">Very Good</span>
+                      </span>
                     </div>
                   </label>
                 ))}
