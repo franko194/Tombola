@@ -3,6 +3,7 @@ import react from "@vitejs/plugin-react";
 import { networkInterfaces } from "node:os";
 
 const DEV_PORT = 5173;
+const BACKEND_PORT = 8002;
 
 function getLanAppUrl() {
   for (const addresses of Object.values(networkInterfaces())) {
@@ -24,7 +25,7 @@ export default defineConfig({
     port: DEV_PORT,
     proxy: {
       "/api": {
-        target: "http://127.0.0.1:8001",
+        target: `http://127.0.0.1:${BACKEND_PORT}`,
         changeOrigin: false,
         rewrite: (path) => path.replace(/^\/api/, ""),
       },
@@ -35,7 +36,7 @@ export default defineConfig({
     port: DEV_PORT,
     proxy: {
       "/api": {
-        target: "http://127.0.0.1:8001",
+        target: `http://127.0.0.1:${BACKEND_PORT}`,
         changeOrigin: false,
         rewrite: (path) => path.replace(/^\/api/, ""),
       },

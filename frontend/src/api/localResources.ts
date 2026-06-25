@@ -487,6 +487,7 @@ export const localResources = {
     open: () => Promise.reject(new Error("La evaluacion con jurados requiere backend activo.")),
     close: () => Promise.reject(new Error("La evaluacion con jurados requiere backend activo.")),
     get: () => Promise.reject(new Error("La evaluacion con jurados requiere backend activo.")),
+    report: () => Promise.reject(new Error("El reporte IA de jurados requiere backend activo.")),
     publicGet: () => Promise.reject(new Error("La evaluacion con jurados requiere backend activo.")),
     identify: () => Promise.reject(new Error("La evaluacion con jurados requiere backend activo.")),
     scores: () => Promise.resolve([]),

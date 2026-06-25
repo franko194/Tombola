@@ -102,6 +102,28 @@ export type TeamRanking = {
   judges_count: number;
 };
 
+export type TeamJudgeFeedback = {
+  team_id: number;
+  team_name: string;
+  summary: string;
+  strengths: string[];
+  opportunities: string[];
+  final_recommendation: string;
+  average_score: number;
+  judge_comments: string[];
+};
+
+export type EvaluationReport = {
+  session: Session;
+  generated_by: "cloud" | "local" | string;
+  executive_summary: string;
+  learnings: string[];
+  recommendations: string[];
+  ranking: TeamRanking[];
+  team_feedback: TeamJudgeFeedback[];
+  markdown: string;
+};
+
 export type Evaluation = {
   id: number;
   session: Session;

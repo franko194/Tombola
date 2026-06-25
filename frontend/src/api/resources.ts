@@ -3,6 +3,7 @@ import { localResources } from "./localResources";
 import type {
   Assignment,
   Evaluation,
+  EvaluationReport,
   Judge,
   JudgeScore,
   Participant,
@@ -68,6 +69,7 @@ const apiResources = {
     open: (sessionId: number) => api<Evaluation>(`/sessions/${sessionId}/evaluation/open`, { method: "POST" }),
     close: (sessionId: number) => api<Evaluation>(`/sessions/${sessionId}/evaluation/close`, { method: "POST" }),
     get: (sessionId: number) => api<Evaluation>(`/sessions/${sessionId}/evaluation`),
+    report: (sessionId: number) => api<EvaluationReport>(`/sessions/${sessionId}/evaluation/report`, { method: "POST" }),
     publicGet: (token: string) => api<PublicEvaluation>(`/judge/${token}`),
     identify: (token: string, payload: { name: string }) =>
       api<Judge>(`/judge/${token}/identify`, { method: "POST", json: payload }),

@@ -187,6 +187,28 @@ class TeamRankingOut(BaseModel):
     judges_count: int
 
 
+class TeamJudgeFeedbackOut(BaseModel):
+    team_id: int
+    team_name: str
+    summary: str
+    strengths: list[str]
+    opportunities: list[str]
+    final_recommendation: str
+    average_score: float
+    judge_comments: list[str]
+
+
+class EvaluationReportOut(BaseModel):
+    session: SessionOut
+    generated_by: str
+    executive_summary: str
+    learnings: list[str]
+    recommendations: list[str]
+    ranking: list[TeamRankingOut]
+    team_feedback: list[TeamJudgeFeedbackOut]
+    markdown: str
+
+
 class EvaluationOut(BaseModel):
     id: int
     session: SessionOut

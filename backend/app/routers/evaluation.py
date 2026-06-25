@@ -25,6 +25,7 @@ from app.routers.teams import serialize_teams
 from app.schemas import (
     EvaluationCriterionOut,
     EvaluationOut,
+    EvaluationReportOut,
     JudgeIdentifyRequest,
     JudgeOut,
     JudgeScoreOut,
@@ -240,6 +241,18 @@ def get_session_ranking(session_id: int, db: Session = Depends(get_db)) -> list[
     if not db.get(SessionModel, session_id):
         raise HTTPException(status_code=404, detail="Session not found")
     return build_ranking(db, session_id)
+
+
+@router.post("/sessions/{session_id}/evaluation/report", response_model=EvaluationReportOut)
+def create_evaluation_report(session_id: int, db: Session = Depends(get_db)) -> EvaluationReportOut:
+    from app.services.evaluation_reports import generate_evaluation_report
+
+    session = db.get(SessionModel, session_id)
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found")
+    if not db.query(Team).filter(Team.session_id == session_id).count():
+        raise HTTPException(status_code=400, detail="Generate teams before requesting an evaluation report")
+    return generate_evaluation_report(db, session)
 
 
 @router.get("/judge/{token}", response_model=PublicEvaluationOut)

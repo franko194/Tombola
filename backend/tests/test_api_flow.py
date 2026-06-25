@@ -6,8 +6,8 @@ from fastapi.testclient import TestClient
 
 from app.database import Base, engine
 from app.main import app
-from app.schemas import TeamInsightsOut
 from app.services import team_insights
+from app.services import ai_facilitator_agent
 
 
 client = TestClient(app)
@@ -223,18 +223,17 @@ def test_team_insights_use_cloud_ai_first_when_configured(monkeypatch):
     session_id = create_session_with_generated_teams()
     calls = []
 
-    def fake_cloud(teams_response, api_key, endpoint, model=None):
-        calls.append((api_key, endpoint, model, len(teams_response.teams)))
-        return TeamInsightsOut(
-            summary="Explicacion generada por IA cloud.",
-            strengths=["Fortaleza cloud"],
-            recommendations=["Recomendacion cloud"],
-            generated_by="cloud",
-        )
+    def fake_agent(prompt, **_kwargs):
+        calls.append(prompt)
+        return {
+            "summary": "Explicacion generada por IA cloud.",
+            "strengths": ["Fortaleza cloud"],
+            "recommendations": ["Recomendacion cloud"],
+        }
 
     monkeypatch.setenv("CLOUD_AI_URL", "https://cloud.example.com/api")
     monkeypatch.setenv("CLOUD_AI_API_KEY", "test-key")
-    monkeypatch.setattr(team_insights, "generate_cloud_team_insights", fake_cloud)
+    monkeypatch.setattr(team_insights, "run_facilitator_json", fake_agent)
 
     response = client.post(f"/sessions/{session_id}/teams/insights")
 
@@ -242,35 +241,49 @@ def test_team_insights_use_cloud_ai_first_when_configured(monkeypatch):
     body = response.json()
     assert body["generated_by"] == "cloud"
     assert body["summary"] == "Explicacion generada por IA cloud."
-    assert calls == [("test-key", "https://cloud.example.com/api", "minimax-m3:cloud", 3)]
+    assert len(calls) == 1
+    assert "Devuelve solo JSON valido" in calls[0]
 
 
 def test_team_insights_accept_ollama_aliases(monkeypatch):
     session_id = create_session_with_generated_teams()
     calls = []
 
-    def fake_cloud(teams_response, api_key, endpoint, model=None):
-        calls.append((api_key, endpoint, model, len(teams_response.teams)))
-        return TeamInsightsOut(
-            summary="Explicacion generada por Ollama cloud.",
-            strengths=["Fortaleza cloud"],
-            recommendations=["Recomendacion cloud"],
-            generated_by="cloud",
-        )
+    def fake_agent(prompt, **_kwargs):
+        calls.append(prompt)
+        return {
+            "summary": "Explicacion generada por Ollama cloud.",
+            "strengths": ["Fortaleza cloud"],
+            "recommendations": ["Recomendacion cloud"],
+        }
 
     monkeypatch.delenv("CLOUD_AI_URL", raising=False)
     monkeypatch.delenv("CLOUD_AI_API_KEY", raising=False)
     monkeypatch.delenv("CLOUD_AI_MODEL", raising=False)
     monkeypatch.setenv("OLLAMA_API_KEY", "ollama-key")
     monkeypatch.setenv("OLLAMA_MODEL", "minimax-m3:cloud")
-    monkeypatch.setattr(team_insights, "generate_cloud_team_insights", fake_cloud)
+    monkeypatch.setattr(team_insights, "run_facilitator_json", fake_agent)
 
     response = client.post(f"/sessions/{session_id}/teams/insights")
 
     assert response.status_code == 200
     body = response.json()
     assert body["generated_by"] == "cloud"
-    assert calls == [("ollama-key", "https://ollama.com/v1/chat/completions", "minimax-m3:cloud", 3)]
+    assert len(calls) == 1
+
+
+def test_facilitator_agent_accepts_ollama_aliases(monkeypatch):
+    monkeypatch.delenv("CLOUD_AI_URL", raising=False)
+    monkeypatch.delenv("CLOUD_AI_API_KEY", raising=False)
+    monkeypatch.delenv("CLOUD_AI_MODEL", raising=False)
+    monkeypatch.setenv("OLLAMA_API_KEY", "ollama-key")
+    monkeypatch.setenv("OLLAMA_MODEL", "minimax-m3:cloud")
+
+    endpoint, api_key, model = ai_facilitator_agent.get_cloud_config()
+
+    assert endpoint == "https://ollama.com/v1/chat/completions"
+    assert api_key == "ollama-key"
+    assert model == "minimax-m3:cloud"
 
 
 def test_team_insights_fall_back_to_local_when_cloud_fails(monkeypatch):
@@ -370,6 +383,41 @@ def test_judge_can_register_before_evaluation_opens():
     refreshed = client.get(f"/sessions/{session['id']}/evaluation").json()
     assert len(refreshed["judges"]) == 1
     assert refreshed["judges"][0]["judge"]["email"] == "previo@example.com"
+
+
+def test_evaluation_report_generates_feedback(monkeypatch):
+    monkeypatch.delenv("CLOUD_AI_URL", raising=False)
+    monkeypatch.delenv("CLOUD_AI_API_KEY", raising=False)
+    monkeypatch.delenv("OLLAMA_API_KEY", raising=False)
+    session = client.post("/sessions", json={"name": "Reporte IA", "date": "2026-06-26"}).json()
+    for index, level in enumerate([5, 4, 3, 2], start=1):
+        client.post(f"/sessions/{session['id']}/participants", json={"name": f"Participante {index}", "ai_level": level})
+    for title in ["Caso A", "Caso B"]:
+        client.post(f"/sessions/{session['id']}/use-cases", json={"title": title})
+    client.post(f"/sessions/{session['id']}/teams/generate", json={"number_of_teams": 2})
+    client.post(f"/sessions/{session['id']}/use-cases/assign", json={"mode": "random"})
+    evaluation = client.post(f"/sessions/{session['id']}/evaluation/open").json()
+    public = client.get(f"/judge/{evaluation['token']}").json()
+    judge = client.post(f"/judge/{evaluation['token']}/identify", json={"name": "Jurado Uno"}).json()
+    for team in public["teams"]:
+        client.post(
+            f"/judge/{evaluation['token']}/scores",
+            json={
+                "judge_id": judge["id"],
+                "team_id": team["id"],
+                "comment": f"Buen potencial en {team['name']}",
+                "scores": [{"criterion_id": criterion["id"], "score": 4} for criterion in public["criteria"]],
+            },
+        )
+
+    response = client.post(f"/sessions/{session['id']}/evaluation/report")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["generated_by"] == "local"
+    assert body["executive_summary"]
+    assert len(body["team_feedback"]) == 2
+    assert "Reporte final IA Friday" in body["markdown"]
 
 
 def test_prepare_evaluation_is_idempotent():
