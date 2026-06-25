@@ -1,4 +1,4 @@
-import { Clipboard, Lock, QrCode, RefreshCw, Trophy, Unlock } from "lucide-react";
+import { Clipboard, Lock, QrCode, RefreshCw, Trash2, Trophy, Unlock } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { resources } from "../api/resources";
 import { JudgeQrCode } from "../components/JudgeQrCode";
@@ -8,6 +8,7 @@ import type { Evaluation, Session } from "../types";
 export function EvaluationPage({ session }: { session: Session }) {
   const [evaluation, setEvaluation] = useState<Evaluation | null>(null);
   const [loading, setLoading] = useState(false);
+  const [removingJudgeId, setRemovingJudgeId] = useState<number | null>(null);
   const [error, setError] = useState("");
 
   async function load() {
@@ -54,6 +55,21 @@ export function EvaluationPage({ session }: { session: Session }) {
   async function copyLink() {
     if (!judgeUrl) return;
     await navigator.clipboard.writeText(judgeUrl);
+  }
+
+  async function removeJudge(judgeId: number, judgeName: string) {
+    const shouldRemove = window.confirm(`Eliminar al jurado "${judgeName}" de esta sesion? Tambien se eliminaran sus votos.`);
+    if (!shouldRemove) return;
+
+    try {
+      setError("");
+      setRemovingJudgeId(judgeId);
+      setEvaluation(await resources.evaluation.removeJudge(session.id, judgeId));
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setRemovingJudgeId(null);
+    }
   }
 
   return (
@@ -159,9 +175,20 @@ export function EvaluationPage({ session }: { session: Session }) {
               <h3 className="text-xl font-black text-slate-950">Jurados de esta sesion</h3>
               <ul className="mt-3 grid gap-2">
                 {evaluation.judges.map((item) => (
-                  <li key={item.judge.id} className="rounded-lg bg-slate-50 px-3 py-2">
-                    <p className="font-black text-slate-900">{item.judge.name}</p>
-                    <p className="text-sm font-semibold text-slate-500">Equipos votados: {item.voted_teams}</p>
+                  <li key={item.judge.id} className="grid gap-3 rounded-lg bg-slate-50 px-3 py-2 sm:grid-cols-[1fr_auto] sm:items-center">
+                    <div className="min-w-0">
+                      <p className="break-words font-black text-slate-900">{item.judge.name}</p>
+                      <p className="text-sm font-semibold text-slate-500">Equipos votados: {item.voted_teams}</p>
+                    </div>
+                    <button
+                      className="btn-danger justify-center"
+                      onClick={() => void removeJudge(item.judge.id, item.judge.name)}
+                      disabled={removingJudgeId === item.judge.id}
+                      title="Eliminar jurado"
+                    >
+                      <Trash2 size={16} />
+                      {removingJudgeId === item.judge.id ? "Eliminando" : "Eliminar"}
+                    </button>
                   </li>
                 ))}
                 {!evaluation.judges.length ? <li className="rounded-lg bg-slate-50 p-3 font-bold text-slate-500">Aun no hay jurados registrados.</li> : null}

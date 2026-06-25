@@ -236,6 +236,27 @@ def get_session_evaluation(session_id: int, request: Request, db: Session = Depe
     return serialize_evaluation(db, evaluation, request)
 
 
+@router.delete("/sessions/{session_id}/evaluation/judges/{judge_id}", response_model=EvaluationOut)
+def remove_session_judge(session_id: int, judge_id: int, request: Request, db: Session = Depends(get_db)) -> EvaluationOut:
+    evaluation = db.query(SessionEvaluation).filter(SessionEvaluation.session_id == session_id).first()
+    if not evaluation:
+        raise HTTPException(status_code=404, detail="Evaluation not found")
+
+    session_judge = (
+        db.query(SessionJudge)
+        .filter(SessionJudge.session_id == session_id, SessionJudge.judge_id == judge_id)
+        .first()
+    )
+    if not session_judge:
+        raise HTTPException(status_code=404, detail="Judge not found in this evaluation")
+
+    db.query(TeamScore).filter(TeamScore.session_id == session_id, TeamScore.judge_id == judge_id).delete()
+    db.delete(session_judge)
+    db.commit()
+    db.refresh(evaluation)
+    return serialize_evaluation(db, evaluation, request)
+
+
 @router.get("/sessions/{session_id}/evaluation/ranking", response_model=list[TeamRankingOut])
 def get_session_ranking(session_id: int, db: Session = Depends(get_db)) -> list[TeamRankingOut]:
     if not db.get(SessionModel, session_id):

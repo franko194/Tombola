@@ -70,6 +70,8 @@ const apiResources = {
     close: (sessionId: number) => api<Evaluation>(`/sessions/${sessionId}/evaluation/close`, { method: "POST" }),
     get: (sessionId: number) => api<Evaluation>(`/sessions/${sessionId}/evaluation`),
     report: (sessionId: number) => api<EvaluationReport>(`/sessions/${sessionId}/evaluation/report`, { method: "POST" }),
+    removeJudge: (sessionId: number, judgeId: number) =>
+      api<Evaluation>(`/sessions/${sessionId}/evaluation/judges/${judgeId}`, { method: "DELETE" }),
     publicGet: (token: string) => api<PublicEvaluation>(`/judge/${token}`),
     identify: (token: string, payload: { name: string }) =>
       api<Judge>(`/judge/${token}/identify`, { method: "POST", json: payload }),

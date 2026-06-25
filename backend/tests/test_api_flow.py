@@ -365,6 +365,40 @@ def test_evaluation_flow_registers_judge_scores_and_ranking():
     assert ranking[0]["votes_count"] == 1
 
 
+def test_remove_judge_from_session_deletes_scores():
+    session = client.post("/sessions", json={"name": "Eliminar jurado", "date": "2026-06-26"}).json()
+    for index, level in enumerate([5, 4, 3, 2], start=1):
+        client.post(
+            f"/sessions/{session['id']}/participants",
+            json={"name": f"Participante {index}", "ai_level": level},
+        )
+    for title in ["Caso A", "Caso B"]:
+        client.post(f"/sessions/{session['id']}/use-cases", json={"title": title})
+    client.post(f"/sessions/{session['id']}/teams/generate", json={"number_of_teams": 2})
+    client.post(f"/sessions/{session['id']}/use-cases/assign", json={"mode": "random"})
+
+    evaluation = client.post(f"/sessions/{session['id']}/evaluation/open").json()
+    public = client.get(f"/judge/{evaluation['token']}").json()
+    judge = client.post(f"/judge/{evaluation['token']}/identify", json={"name": "Jurado a borrar"}).json()
+    team_id = public["teams"][0]["id"]
+    scores = [{"criterion_id": criterion["id"], "score": 5} for criterion in public["criteria"]]
+    client.post(
+        f"/judge/{evaluation['token']}/scores",
+        json={"judge_id": judge["id"], "team_id": team_id, "scores": scores, "comment": "Voto temporal"},
+    )
+
+    delete_response = client.delete(f"/sessions/{session['id']}/evaluation/judges/{judge['id']}")
+
+    assert delete_response.status_code == 200
+    body = delete_response.json()
+    assert body["judges"] == []
+    ranking = client.get(f"/sessions/{session['id']}/evaluation/ranking").json()
+    assert all(item["votes_count"] == 0 for item in ranking)
+    assert all(item["average_score"] == 0 for item in ranking)
+    scores_after = client.get(f"/judge/{evaluation['token']}/scores?judge_id={judge['id']}").json()
+    assert scores_after == []
+
+
 def test_judge_can_register_before_evaluation_opens():
     session = client.post("/sessions", json={"name": "Registro previo", "date": "2026-06-26"}).json()
 
