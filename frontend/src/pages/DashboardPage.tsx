@@ -1,8 +1,9 @@
 import { BarChart3, Clipboard, ClipboardList, QrCode, Sparkles, Users } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { resources } from "../api/resources";
+import { JudgeQrCode } from "../components/JudgeQrCode";
 import { MetricCard } from "../components/MetricCard";
-import { buildJudgeUrl, buildQrCodeUrl, isLocalUrl } from "../lib/publicUrl";
+import { buildJudgeUrl, isLocalUrl } from "../lib/publicUrl";
 import type { Evaluation, PageKey, Participant, Session, Team, UseCase } from "../types";
 
 export function DashboardPage({ session, onPageChange }: { session: Session; onPageChange: (page: PageKey) => void }) {
@@ -25,11 +26,6 @@ export function DashboardPage({ session, onPageChange }: { session: Session; onP
   }, [session.id]);
 
   const judgeUrl = useMemo(() => buildJudgeUrl(evaluation?.token, evaluation?.judge_url), [evaluation?.judge_url, evaluation?.token]);
-
-  const qrUrl = useMemo(() => {
-    if (!judgeUrl) return "";
-    return buildQrCodeUrl(judgeUrl, 180);
-  }, [judgeUrl]);
 
   const qrNeedsPublicUrl = judgeUrl ? isLocalUrl(judgeUrl) : false;
 
@@ -106,7 +102,7 @@ export function DashboardPage({ session, onPageChange }: { session: Session; onP
             </div>
           </div>
           <div className="grid place-items-center rounded-lg bg-white p-4">
-            {qrUrl ? <img src={qrUrl} alt="QR para registro de jurados" width={180} height={180} /> : <p className="p-8 font-bold text-slate-500">Preparando QR...</p>}
+            <JudgeQrCode url={judgeUrl} alt="QR para registro de jurados" size={180} />
           </div>
         </div>
       </div>

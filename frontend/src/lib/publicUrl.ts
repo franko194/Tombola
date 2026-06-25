@@ -36,9 +36,3 @@ export function isLocalUrl(url: string) {
     return false;
   }
 }
-
-export function buildQrCodeUrl(data: string, size: number) {
-  if (!data || !isJudgeUrl(data)) return "";
-  const cacheKey = encodeURIComponent(data);
-  return `https://api.qrserver.com/v1/create-qr-code/?size=${size}x${size}&margin=12&format=png&data=${encodeURIComponent(data)}&cache=${cacheKey}`;
-}

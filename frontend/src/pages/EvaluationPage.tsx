@@ -1,7 +1,8 @@
 import { Clipboard, Lock, QrCode, RefreshCw, Trophy, Unlock } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { resources } from "../api/resources";
-import { buildJudgeUrl, buildQrCodeUrl, isLocalUrl } from "../lib/publicUrl";
+import { JudgeQrCode } from "../components/JudgeQrCode";
+import { buildJudgeUrl, isLocalUrl } from "../lib/publicUrl";
 import type { Evaluation, Session } from "../types";
 
 export function EvaluationPage({ session }: { session: Session }) {
@@ -23,11 +24,6 @@ export function EvaluationPage({ session }: { session: Session }) {
   }, [session.id]);
 
   const judgeUrl = useMemo(() => buildJudgeUrl(evaluation?.token, evaluation?.judge_url), [evaluation?.judge_url, evaluation?.token]);
-
-  const qrUrl = useMemo(() => {
-    if (!judgeUrl) return "";
-    return buildQrCodeUrl(judgeUrl, 260);
-  }, [judgeUrl]);
 
   const qrNeedsPublicUrl = judgeUrl ? isLocalUrl(judgeUrl) : false;
 
@@ -101,7 +97,7 @@ export function EvaluationPage({ session }: { session: Session }) {
                 <h3 className="text-xl font-black text-slate-950">QR para jurados</h3>
               </div>
               <div className="mt-4 grid place-items-center rounded-lg bg-white p-4">
-                {qrUrl ? <img src={qrUrl} alt="QR de evaluacion para jurados" width={260} height={260} /> : null}
+                <JudgeQrCode url={judgeUrl} alt="QR de evaluacion para jurados" size={260} />
               </div>
               <div className="mt-3 rounded-lg bg-slate-50 p-3">
                 <p className="text-xs font-black uppercase tracking-[0.12em] text-slate-400">Destino del QR</p>
