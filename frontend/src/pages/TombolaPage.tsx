@@ -10,7 +10,7 @@ import {
   getTombolaReadiness,
   isTombolaComplete,
 } from "../lib/wheel";
-import type { Assignment, PageKey, Results, Session, TeamsResponse, UseCase } from "../types";
+import type { PageKey, Results, Session, TeamsResponse, UseCase } from "../types";
 
 const wheelColors = ["#0f7c80", "#315fbd", "#16a085", "#263b62", "#22a6b3", "#4f7dde"];
 

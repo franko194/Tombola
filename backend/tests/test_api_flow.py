@@ -4,18 +4,20 @@ os.environ["DATABASE_URL"] = "sqlite:///./data/test_ia_friday.db"
 
 from fastapi.testclient import TestClient
 
-from app.database import Base, engine
+from app.auth import COOKIE_NAME, create_session_token
+from app.database import Base, engine, init_db
 from app.main import app
 from app.services import team_insights
 from app.services import ai_facilitator_agent
 
 
 client = TestClient(app)
+client.cookies.set(COOKIE_NAME, create_session_token("organizador@example.com"))
 
 
 def setup_function():
     Base.metadata.drop_all(bind=engine)
-    Base.metadata.create_all(bind=engine)
+    init_db()  # also seeds the organizers table from ORGANIZER_EMAILS
 
 
 def test_full_api_flow():
@@ -346,16 +348,19 @@ def test_evaluation_flow_registers_judge_scores_and_ranking():
     ]
 
     public = client.get(f"/judge/{evaluation['token']}").json()
-    judge = client.post(
+    identity = client.post(
         f"/judge/{evaluation['token']}/identify",
         json={"name": "Jurado Uno", "email": "jurado@example.com", "organization": "IA Friday"},
     ).json()
+    judge = identity["judge"]
+    vote_headers = {"X-Judge-Token": identity["vote_token"]}
     team_id = public["teams"][0]["id"]
     scores = [{"criterion_id": criterion["id"], "score": 5} for criterion in public["criteria"]]
 
     submitted = client.post(
         f"/judge/{evaluation['token']}/scores",
         json={"judge_id": judge["id"], "team_id": team_id, "scores": scores, "comment": "Muy buen pitch"},
+        headers=vote_headers,
     )
 
     assert submitted.status_code == 200
@@ -379,12 +384,15 @@ def test_remove_judge_from_session_deletes_scores():
 
     evaluation = client.post(f"/sessions/{session['id']}/evaluation/open").json()
     public = client.get(f"/judge/{evaluation['token']}").json()
-    judge = client.post(f"/judge/{evaluation['token']}/identify", json={"name": "Jurado a borrar"}).json()
+    identity = client.post(f"/judge/{evaluation['token']}/identify", json={"name": "Jurado a borrar"}).json()
+    judge = identity["judge"]
+    vote_headers = {"X-Judge-Token": identity["vote_token"]}
     team_id = public["teams"][0]["id"]
     scores = [{"criterion_id": criterion["id"], "score": 5} for criterion in public["criteria"]]
     client.post(
         f"/judge/{evaluation['token']}/scores",
         json={"judge_id": judge["id"], "team_id": team_id, "scores": scores, "comment": "Voto temporal"},
+        headers=vote_headers,
     )
 
     delete_response = client.delete(f"/sessions/{session['id']}/evaluation/judges/{judge['id']}")
@@ -395,8 +403,9 @@ def test_remove_judge_from_session_deletes_scores():
     ranking = client.get(f"/sessions/{session['id']}/evaluation/ranking").json()
     assert all(item["votes_count"] == 0 for item in ranking)
     assert all(item["average_score"] == 0 for item in ranking)
-    scores_after = client.get(f"/judge/{evaluation['token']}/scores?judge_id={judge['id']}").json()
-    assert scores_after == []
+    # The removed judge's token was revoked together with the judge, so their votes cannot be read anymore.
+    scores_after = client.get(f"/judge/{evaluation['token']}/scores?judge_id={judge['id']}", headers=vote_headers)
+    assert scores_after.status_code == 403
 
 
 def test_judge_can_register_before_evaluation_opens():
@@ -432,7 +441,9 @@ def test_evaluation_report_generates_feedback(monkeypatch):
     client.post(f"/sessions/{session['id']}/use-cases/assign", json={"mode": "random"})
     evaluation = client.post(f"/sessions/{session['id']}/evaluation/open").json()
     public = client.get(f"/judge/{evaluation['token']}").json()
-    judge = client.post(f"/judge/{evaluation['token']}/identify", json={"name": "Jurado Uno"}).json()
+    identity = client.post(f"/judge/{evaluation['token']}/identify", json={"name": "Jurado Uno"}).json()
+    judge = identity["judge"]
+    vote_headers = {"X-Judge-Token": identity["vote_token"]}
     for team in public["teams"]:
         client.post(
             f"/judge/{evaluation['token']}/scores",
@@ -442,6 +453,7 @@ def test_evaluation_report_generates_feedback(monkeypatch):
                 "comment": f"Buen potencial en {team['name']}",
                 "scores": [{"criterion_id": criterion["id"], "score": 4} for criterion in public["criteria"]],
             },
+            headers=vote_headers,
         )
 
     response = client.post(f"/sessions/{session['id']}/evaluation/report")
@@ -475,7 +487,7 @@ def test_judge_can_register_with_name_only():
     )
 
     assert judge.status_code == 200
-    payload = judge.json()
+    payload = judge.json()["judge"]
     assert payload["name"] == "Jurado Sin Correo"
     assert payload["email"].endswith("@internal.judge")
 

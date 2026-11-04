@@ -1,4 +1,4 @@
-import { BarChart3, ClipboardCheck, ClipboardList, Home, Play, Presentation, Users } from "lucide-react";
+import { BarChart3, ClipboardCheck, ClipboardList, History, Home, Play, Presentation, Users } from "lucide-react";
 import type { PageKey, Session } from "../types";
 import { StatusBadge } from "./StatusBadge";
 
@@ -10,6 +10,7 @@ const tabs: Array<{ key: PageKey; label: string; icon: React.ComponentType<{ siz
   { key: "tombola", label: "Tombola", icon: Play },
   { key: "evaluation", label: "Evaluacion", icon: ClipboardCheck },
   { key: "results", label: "Resultados", icon: Presentation },
+  { key: "history", label: "Historial", icon: History },
 ];
 
 type Props = {
@@ -17,10 +18,11 @@ type Props = {
   page: PageKey;
   onPageChange: (page: PageKey) => void;
   onBackToSessions: () => void;
+  onLogout: () => void;
   children: React.ReactNode;
 };
 
-export function Layout({ session, page, onPageChange, onBackToSessions, children }: Props) {
+export function Layout({ session, page, onPageChange, onBackToSessions, onLogout, children }: Props) {
   return (
     <div className="min-h-screen bg-[#eef3f8]">
       <header className="border-b border-slate-200 bg-white/90 backdrop-blur">
@@ -33,9 +35,14 @@ export function Layout({ session, page, onPageChange, onBackToSessions, children
             </div>
             <p className="mt-1 text-sm font-semibold text-slate-500">{session.date}</p>
           </div>
-          <button className="btn-secondary" onClick={onBackToSessions}>
-            Cambiar sesion
-          </button>
+          <div className="flex gap-2">
+            <button className="btn-secondary" onClick={onBackToSessions}>
+              Cambiar sesion
+            </button>
+            <button className="btn-secondary" onClick={onLogout}>
+              Salir
+            </button>
+          </div>
         </div>
       </header>
       <div className="mx-auto grid max-w-7xl gap-5 px-4 py-5 lg:grid-cols-[230px_1fr]">

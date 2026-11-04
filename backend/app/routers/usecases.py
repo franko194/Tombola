@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.models import Assignment, SessionModel, UseCase, utc_now
+from app.services.draw_history import archive_draw
 from app.schemas import UseCaseCreate, UseCaseOut, UseCaseUpdate
 
 router = APIRouter(tags=["use-cases"])
@@ -13,7 +14,8 @@ def ensure_session(db: Session, session_id: int) -> None:
         raise HTTPException(status_code=404, detail="Session not found")
 
 
-def reset_assignments(db: Session, session_id: int) -> None:
+def reset_assignments(db: Session, session_id: int, reason: str) -> None:
+    archive_draw(db, session_id, reason)
     db.query(Assignment).filter(Assignment.session_id == session_id).delete()
     session = db.get(SessionModel, session_id)
     if session and session.status in {"cases_assigned", "completed"}:
@@ -28,7 +30,7 @@ def create_use_case(
     db: Session = Depends(get_db),
 ) -> UseCase:
     ensure_session(db, session_id)
-    reset_assignments(db, session_id)
+    reset_assignments(db, session_id, "use_case_added")
     use_case = UseCase(session_id=session_id, title=payload.title.strip(), description=payload.description)
     db.add(use_case)
     db.commit()
@@ -51,7 +53,7 @@ def update_use_case(
     use_case = db.get(UseCase, use_case_id)
     if not use_case:
         raise HTTPException(status_code=404, detail="Use case not found")
-    reset_assignments(db, use_case.session_id)
+    reset_assignments(db, use_case.session_id, "use_case_edited")
     data = payload.model_dump(exclude_unset=True)
     if "title" in data and data["title"] is not None:
         use_case.title = data["title"].strip()
@@ -68,7 +70,7 @@ def delete_use_case(use_case_id: int, db: Session = Depends(get_db)) -> dict[str
     use_case = db.get(UseCase, use_case_id)
     if not use_case:
         raise HTTPException(status_code=404, detail="Use case not found")
-    reset_assignments(db, use_case.session_id)
+    reset_assignments(db, use_case.session_id, "use_case_deleted")
     db.delete(use_case)
     db.commit()
     return {"ok": True}

@@ -1,6 +1,7 @@
 import { Pencil, Plus, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { resources } from "../api/resources";
+import { resetWarning } from "../lib/drawGuard";
 import type { Session, UseCase } from "../types";
 
 export function UseCasesPage({ session }: { session: Session }) {
@@ -17,6 +18,8 @@ export function UseCasesPage({ session }: { session: Session }) {
   }, [session.id]);
 
   async function add() {
+    const warning = await resetWarning(session.id, "assignments");
+    if (warning && !confirm(warning)) return;
     await resources.useCases.create(session.id, { title, description });
     setTitle("");
     setDescription("");
@@ -24,6 +27,8 @@ export function UseCasesPage({ session }: { session: Session }) {
   }
 
   async function update(item: UseCase) {
+    const warning = await resetWarning(session.id, "assignments");
+    if (warning && !confirm(warning)) return;
     const nextTitle = prompt("Titulo", item.title);
     if (!nextTitle) return;
     const nextDescription = prompt("Descripcion", item.description ?? "") ?? "";
@@ -32,7 +37,8 @@ export function UseCasesPage({ session }: { session: Session }) {
   }
 
   async function remove(id: number) {
-    if (!confirm("Eliminar caso de uso? Se limpiaran asignaciones si existian.")) return;
+    const warning = await resetWarning(session.id, "assignments");
+    if (!confirm(warning ?? "Eliminar caso de uso?")) return;
     await resources.useCases.remove(id);
     await load();
   }

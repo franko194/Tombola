@@ -3,7 +3,7 @@ import os
 from pathlib import Path
 import tempfile
 
-from sqlalchemy import create_engine, text
+from sqlalchemy import create_engine, inspect, text
 from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
 
 IS_VERCEL = bool(os.environ.get("VERCEL"))
@@ -43,7 +43,37 @@ def init_db() -> None:
 
     Base.metadata.create_all(bind=engine)
     migrate_assignments_allow_repeated_use_cases()
+    migrate_organizers_columns()
+    seed_organizers_from_env()
     _db_initialized = True
+
+
+def migrate_organizers_columns() -> None:
+    # create_all does not add columns to tables that already exist, so older organizers tables need these.
+    columns = {column["name"] for column in inspect(engine).get_columns("organizers")}
+    missing = {
+        "password_hash": "ALTER TABLE organizers ADD COLUMN password_hash VARCHAR",
+        "is_admin": "ALTER TABLE organizers ADD COLUMN is_admin BOOLEAN NOT NULL DEFAULT FALSE",
+    }
+    with engine.begin() as connection:
+        for name, statement in missing.items():
+            if name not in columns:
+                connection.execute(text(statement))
+
+
+def seed_organizers_from_env() -> None:
+    # ORGANIZER_EMAILS only adds missing organizers. Access is managed in the organizers table.
+    emails = {item.strip().lower() for item in os.environ.get("ORGANIZER_EMAILS", "").split(",") if item.strip()}
+    if not emails:
+        return
+
+    from app.models import Organizer, utc_now
+
+    with SessionLocal() as db:
+        existing = {row[0] for row in db.query(Organizer.email).all()}
+        for email in sorted(emails - existing):
+            db.add(Organizer(email=email, active=True, created_at=utc_now()))
+        db.commit()
 
 
 def ensure_db_initialized() -> None:

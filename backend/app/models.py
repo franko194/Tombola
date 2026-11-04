@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 
 from sqlalchemy import CheckConstraint, ForeignKey, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -151,5 +151,55 @@ class TeamScore(Base):
     criterion_id: Mapped[int] = mapped_column(ForeignKey("evaluation_criteria.id", ondelete="CASCADE"))
     score: Mapped[int]
     comment: Mapped[str | None] = mapped_column(default=None)
+    created_at: Mapped[str] = mapped_column(default=utc_now)
+    updated_at: Mapped[str] = mapped_column(default=utc_now)
+
+
+class DrawHistory(Base):
+    # No foreign key on purpose: history must survive when its session is deleted.
+    __tablename__ = "draw_history"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    session_id: Mapped[int] = mapped_column(index=True)
+    session_name: Mapped[str]
+    reason: Mapped[str]
+    payload_json: Mapped[str]
+    note: Mapped[str | None] = mapped_column(default=None)
+    created_at: Mapped[str] = mapped_column(default=utc_now)
+
+
+class Organizer(Base):
+    # Who may open the organizer app. Seeded from ORGANIZER_EMAILS; set active to false to revoke access.
+    __tablename__ = "organizers"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    email: Mapped[str] = mapped_column(unique=True)
+    password_hash: Mapped[str | None] = mapped_column(default=None)
+    is_admin: Mapped[bool] = mapped_column(default=False)
+    active: Mapped[bool] = mapped_column(default=True)
+    created_at: Mapped[str] = mapped_column(default=utc_now)
+
+
+class JudgeVoteToken(Base):
+    # Hash of the token a judge receives when identifying; required to submit or read that judge's votes.
+    __tablename__ = "judge_vote_tokens"
+    __table_args__ = (UniqueConstraint("session_id", "judge_id", name="unique_judge_vote_token"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    session_id: Mapped[int] = mapped_column(ForeignKey("sessions.id", ondelete="CASCADE"))
+    judge_id: Mapped[int] = mapped_column(ForeignKey("judges.id", ondelete="CASCADE"))
+    token_hash: Mapped[str]
+    created_at: Mapped[str] = mapped_column(default=utc_now)
+
+
+class ClientVisit(Base):
+    # External clients planned for a date. Independent from IA Friday sessions.
+    __tablename__ = "client_visits"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    company_name: Mapped[str]
+    contact: Mapped[str | None] = mapped_column(default=None)
+    notes: Mapped[str | None] = mapped_column(default=None)
+    visit_date: Mapped[date] = mapped_column(index=True)
     created_at: Mapped[str] = mapped_column(default=utc_now)
     updated_at: Mapped[str] = mapped_column(default=utc_now)

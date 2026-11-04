@@ -40,6 +40,10 @@ export async function api<T>(path: string, options: RequestOptions = {}): Promis
   });
 
   if (!response.ok) {
+    // An expired organizer cookie sends the app back to the login screen. Login attempts are excluded.
+    if (response.status === 401 && !path.startsWith("/auth/")) {
+      window.dispatchEvent(new Event("auth:expired"));
+    }
     const error = await response.json().catch(() => ({ detail: "Error inesperado" }));
     throw new Error(error.detail ?? "Error inesperado");
   }

@@ -84,6 +84,12 @@ select {
   font-weight: 800;
 }
 
+.btn-secondary:disabled,
+.btn-danger:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
 .input {
   width: 100%;
   border-radius: 8px;

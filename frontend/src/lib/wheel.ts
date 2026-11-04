@@ -1,7 +1,7 @@
 import type { CSSProperties } from "react";
 import type { UseCase } from "../types";
 
-export type WheelSegment = {
+type WheelSegment = {
   index: number;
   id: number;
   title: string;

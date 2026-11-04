@@ -1,23 +1,24 @@
+import hashlib
+import hmac
 import os
-import secrets
 import re
+import secrets
 
-from fastapi import APIRouter, Depends, HTTPException, Request
-from sqlalchemy.exc import IntegrityError
+from fastapi import APIRouter, Depends, Header, HTTPException, Request
 from sqlalchemy import func
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.models import (
-    Assignment,
     EvaluationCriterion,
     Judge,
+    JudgeVoteToken,
     SessionEvaluation,
     SessionJudge,
     SessionModel,
     Team,
     TeamScore,
-    UseCase,
     utc_now,
 )
 from app.routers.results import serialize_assignments
@@ -26,6 +27,7 @@ from app.schemas import (
     EvaluationCriterionOut,
     EvaluationOut,
     EvaluationReportOut,
+    JudgeIdentifyOut,
     JudgeIdentifyRequest,
     JudgeOut,
     JudgeScoreOut,
@@ -36,6 +38,8 @@ from app.schemas import (
 )
 
 router = APIRouter(tags=["evaluation"])
+# Judge routes are public: judges reach them from the QR link without an organizer login.
+public_router = APIRouter(tags=["judges"])
 DEFAULT_PUBLIC_APP_URL = "https://tombola-rust.vercel.app"
 
 DEFAULT_CRITERIA = [
@@ -63,6 +67,24 @@ def public_base_url(request: Request | None = None) -> str:
 
 def build_judge_url(token: str, request: Request | None = None) -> str:
     return f"{public_base_url(request)}/judge/{token}"
+
+
+def hash_vote_token(vote_token: str) -> str:
+    return hashlib.sha256(vote_token.encode()).hexdigest()
+
+
+def issue_vote_token(db: Session, session_id: int, judge_id: int) -> str:
+    # Replacing the row invalidates any token the judge held before (for example, from another device).
+    vote_token = secrets.token_urlsafe(24)
+    db.query(JudgeVoteToken).filter(JudgeVoteToken.session_id == session_id, JudgeVoteToken.judge_id == judge_id).delete()
+    db.add(JudgeVoteToken(session_id=session_id, judge_id=judge_id, token_hash=hash_vote_token(vote_token)))
+    return vote_token
+
+
+def require_vote_token(db: Session, session_id: int, judge_id: int, vote_token: str | None) -> None:
+    stored = db.query(JudgeVoteToken).filter(JudgeVoteToken.session_id == session_id, JudgeVoteToken.judge_id == judge_id).first()
+    if not stored or not vote_token or not hmac.compare_digest(stored.token_hash, hash_vote_token(vote_token)):
+        raise HTTPException(status_code=403, detail="Judge identity could not be verified")
 
 
 def get_evaluation_by_token(db: Session, token: str) -> SessionEvaluation:
@@ -251,6 +273,7 @@ def remove_session_judge(session_id: int, judge_id: int, request: Request, db: S
         raise HTTPException(status_code=404, detail="Judge not found in this evaluation")
 
     db.query(TeamScore).filter(TeamScore.session_id == session_id, TeamScore.judge_id == judge_id).delete()
+    db.query(JudgeVoteToken).filter(JudgeVoteToken.session_id == session_id, JudgeVoteToken.judge_id == judge_id).delete()
     db.delete(session_judge)
     db.commit()
     db.refresh(evaluation)
@@ -276,7 +299,7 @@ def create_evaluation_report(session_id: int, db: Session = Depends(get_db)) -> 
     return generate_evaluation_report(db, session)
 
 
-@router.get("/judge/{token}", response_model=PublicEvaluationOut)
+@public_router.get("/judge/{token}", response_model=PublicEvaluationOut)
 def get_public_evaluation(token: str, db: Session = Depends(get_db)) -> PublicEvaluationOut:
     evaluation = get_evaluation_by_token(db, token)
     session = db.get(SessionModel, evaluation.session_id)
@@ -292,8 +315,8 @@ def get_public_evaluation(token: str, db: Session = Depends(get_db)) -> PublicEv
     )
 
 
-@router.post("/judge/{token}/identify", response_model=JudgeOut)
-def identify_judge(token: str, payload: JudgeIdentifyRequest, db: Session = Depends(get_db)) -> JudgeOut:
+@public_router.post("/judge/{token}/identify", response_model=JudgeIdentifyOut)
+def identify_judge(token: str, payload: JudgeIdentifyRequest, db: Session = Depends(get_db)) -> JudgeIdentifyOut:
     evaluation = get_evaluation_by_token(db, token)
     if evaluation.status == "closed":
         raise HTTPException(status_code=400, detail="Evaluation is closed")
@@ -324,14 +347,21 @@ def identify_judge(token: str, payload: JudgeIdentifyRequest, db: Session = Depe
     else:
         db.add(SessionJudge(session_id=evaluation.session_id, judge_id=judge.id, status="checked_in", checked_in_at=utc_now()))
 
+    vote_token = issue_vote_token(db, evaluation.session_id, judge.id)
     db.commit()
     db.refresh(judge)
-    return JudgeOut.model_validate(judge)
+    return JudgeIdentifyOut(judge=JudgeOut.model_validate(judge), vote_token=vote_token)
 
 
-@router.get("/judge/{token}/scores", response_model=list[JudgeScoreOut])
-def get_judge_scores(token: str, judge_id: int, db: Session = Depends(get_db)) -> list[JudgeScoreOut]:
+@public_router.get("/judge/{token}/scores", response_model=list[JudgeScoreOut])
+def get_judge_scores(
+    token: str,
+    judge_id: int,
+    db: Session = Depends(get_db),
+    x_judge_token: str | None = Header(default=None),
+) -> list[JudgeScoreOut]:
     evaluation = get_evaluation_by_token(db, token)
+    require_vote_token(db, evaluation.session_id, judge_id, x_judge_token)
     scores = (
         db.query(TeamScore)
         .filter(TeamScore.session_id == evaluation.session_id, TeamScore.judge_id == judge_id)
@@ -341,9 +371,15 @@ def get_judge_scores(token: str, judge_id: int, db: Session = Depends(get_db)) -
     return [JudgeScoreOut(team_id=item.team_id, criterion_id=item.criterion_id, score=item.score, comment=item.comment) for item in scores]
 
 
-@router.post("/judge/{token}/scores", response_model=list[JudgeScoreOut])
-def submit_scores(token: str, payload: TeamScoreSubmit, db: Session = Depends(get_db)) -> list[JudgeScoreOut]:
+@public_router.post("/judge/{token}/scores", response_model=list[JudgeScoreOut])
+def submit_scores(
+    token: str,
+    payload: TeamScoreSubmit,
+    db: Session = Depends(get_db),
+    x_judge_token: str | None = Header(default=None),
+) -> list[JudgeScoreOut]:
     evaluation = get_evaluation_by_token(db, token)
+    require_vote_token(db, evaluation.session_id, payload.judge_id, x_judge_token)
     if evaluation.status != "open":
         raise HTTPException(status_code=400, detail="Evaluation is closed")
     if not db.query(SessionJudge).filter(SessionJudge.session_id == evaluation.session_id, SessionJudge.judge_id == payload.judge_id).first():
@@ -388,4 +424,4 @@ def submit_scores(token: str, payload: TeamScoreSubmit, db: Session = Depends(ge
             )
 
     db.commit()
-    return get_judge_scores(token, payload.judge_id, db)
+    return get_judge_scores(token, payload.judge_id, db, x_judge_token)

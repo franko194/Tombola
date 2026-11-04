@@ -1,11 +1,12 @@
 from contextlib import asynccontextmanager
 import os
 
-from fastapi import FastAPI
+from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.auth import require_organizer
 from app.database import check_database, init_db
-from app.routers import ai, evaluation, participants, results, sessions, teams, usecases
+from app.routers import ai, auth, clients, evaluation, organizers, participants, results, sessions, teams, usecases
 
 
 @asynccontextmanager
@@ -44,11 +45,17 @@ def database_health() -> dict[str, str]:
     return check_database()
 
 
-app.include_router(sessions.router)
-app.include_router(participants.router)
-app.include_router(usecases.router)
-app.include_router(teams.router)
-app.include_router(results.router)
-app.include_router(ai.router)
-app.include_router(evaluation.router)
+# Every organizer route requires a logged-in organizer. Only login and judge routes are public.
+organizer = [Depends(require_organizer)]
 
+app.include_router(auth.router)
+app.include_router(sessions.router, dependencies=organizer)
+app.include_router(participants.router, dependencies=organizer)
+app.include_router(usecases.router, dependencies=organizer)
+app.include_router(teams.router, dependencies=organizer)
+app.include_router(results.router, dependencies=organizer)
+app.include_router(ai.router, dependencies=organizer)
+app.include_router(evaluation.router, dependencies=organizer)
+app.include_router(clients.router, dependencies=organizer)
+app.include_router(organizers.router)
+app.include_router(evaluation.public_router)

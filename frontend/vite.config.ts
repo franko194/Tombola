@@ -3,7 +3,7 @@ import react from "@vitejs/plugin-react";
 import { networkInterfaces } from "node:os";
 
 const DEV_PORT = 5173;
-const BACKEND_PORT = 8002;
+const BACKEND_PORT = Number(process.env.BACKEND_PORT ?? 8002);
 
 function getLanAppUrl() {
   for (const addresses of Object.values(networkInterfaces())) {

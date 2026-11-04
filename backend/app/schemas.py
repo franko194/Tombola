@@ -1,3 +1,5 @@
+from datetime import date
+
 from pydantic import BaseModel, Field
 
 
@@ -143,6 +145,11 @@ class JudgeOut(ORMModel):
     active: bool
 
 
+class JudgeIdentifyOut(BaseModel):
+    judge: JudgeOut
+    vote_token: str
+
+
 class SessionJudgeOut(BaseModel):
     judge: JudgeOut
     status: str
@@ -227,3 +234,40 @@ class PublicEvaluationOut(BaseModel):
     criteria: list[EvaluationCriterionOut]
     teams: list[TeamOut]
     assignments: list[AssignmentOut]
+
+
+class DrawHistoryOut(BaseModel):
+    id: int
+    session_id: int
+    session_name: str
+    reason: str
+    note: str | None = None
+    created_at: str
+    teams: list[dict]
+    assignments: list[dict]
+
+
+class DrawHistoryUpdate(BaseModel):
+    note: str | None = None
+
+
+class ClientVisitCreate(BaseModel):
+    company_name: str = Field(min_length=1)
+    contact: str | None = None
+    notes: str | None = None
+    visit_date: date
+
+
+class ClientVisitUpdate(BaseModel):
+    company_name: str | None = Field(default=None, min_length=1)
+    contact: str | None = None
+    notes: str | None = None
+    visit_date: date | None = None
+
+
+class ClientVisitOut(ORMModel):
+    id: int
+    company_name: str
+    contact: str | None = None
+    notes: str | None = None
+    visit_date: date

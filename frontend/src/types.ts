@@ -151,4 +151,50 @@ export type JudgeScore = {
   comment?: string | null;
 };
 
-export type PageKey = "dashboard" | "participants" | "usecases" | "teams" | "tombola" | "evaluation" | "results";
+export type DrawHistory = {
+  id: number;
+  session_id: number;
+  session_name: string;
+  reason: string;
+  note?: string | null;
+  created_at: string;
+  teams: Array<{ name: string; average_ai_level: number; total_ai_score: number; members: string[] }>;
+  assignments: Array<{ team_name: string; use_case_title: string }>;
+};
+
+export type ClientVisit = {
+  id: number;
+  company_name: string;
+  contact?: string | null;
+  notes?: string | null;
+  visit_date: string;
+};
+
+export type ClientVisitInput = {
+  company_name: string;
+  contact?: string | null;
+  notes?: string | null;
+  visit_date: string;
+};
+
+export type Organizer = {
+  id: number;
+  email: string;
+  active: boolean;
+  is_admin: boolean;
+  has_password: boolean;
+};
+
+export type OrganizerCreateInput = {
+  email: string;
+  password: string;
+  is_admin: boolean;
+};
+
+export type OrganizerUpdateInput = {
+  active?: boolean;
+  is_admin?: boolean;
+  password?: string;
+};
+
+export type PageKey = "dashboard" | "participants" | "usecases" | "teams" | "tombola" | "evaluation" | "results" | "history";

@@ -1,6 +1,7 @@
 import { FileUp, Pencil, Plus, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { resources } from "../api/resources";
+import { resetWarning } from "../lib/drawGuard";
 import type { Participant, Session } from "../types";
 
 const levelLabels = ["Sin experiencia", "Principiante", "Basico", "Intermedio", "Avanzado", "Experto"];
@@ -20,6 +21,8 @@ export function ParticipantsPage({ session }: { session: Session }) {
   }, [session.id]);
 
   async function add() {
+    const warning = await resetWarning(session.id, "teams");
+    if (warning && !confirm(warning)) return;
     try {
       await resources.participants.create(session.id, { name, ai_level: aiLevel });
       setName("");
@@ -30,12 +33,15 @@ export function ParticipantsPage({ session }: { session: Session }) {
   }
 
   async function remove(id: number) {
-    if (!confirm("Eliminar participante? Se regeneraran equipos si ya existian.")) return;
+    const warning = await resetWarning(session.id, "teams");
+    if (!confirm(warning ?? "Eliminar participante?")) return;
     await resources.participants.remove(id);
     await load();
   }
 
   async function update(item: Participant) {
+    const warning = await resetWarning(session.id, "teams");
+    if (warning && !confirm(warning)) return;
     const nextName = prompt("Nombre", item.name);
     if (!nextName) return;
     const nextLevel = Number(prompt("Nivel IA 0-5", String(item.ai_level)));
@@ -45,6 +51,8 @@ export function ParticipantsPage({ session }: { session: Session }) {
 
   async function importFile(file?: File) {
     if (!file) return;
+    const warning = await resetWarning(session.id, "teams");
+    if (warning && !confirm(warning)) return;
     try {
       await resources.participants.import(session.id, file);
       await load();

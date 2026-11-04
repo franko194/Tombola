@@ -1,7 +1,12 @@
 import { api } from "./client";
-import { localResources } from "./localResources";
 import type {
   Assignment,
+  ClientVisit,
+  ClientVisitInput,
+  DrawHistory,
+  Organizer,
+  OrganizerCreateInput,
+  OrganizerUpdateInput,
   Evaluation,
   EvaluationReport,
   Judge,
@@ -15,9 +20,30 @@ import type {
   UseCase,
 } from "../types";
 
-const useLocalResources = import.meta.env.VITE_DATA_MODE === "local";
-
-const apiResources = {
+export const resources = {
+  auth: {
+    me: () => api<{ email: string; is_admin: boolean }>("/auth/me"),
+    login: (email: string, password: string) => api<{ email: string }>("/auth/login", { method: "POST", json: { email, password } }),
+    logout: () => api<{ ok: boolean }>("/auth/logout", { method: "POST" }),
+  },
+  organizers: {
+    list: () => api<Organizer[]>("/organizers"),
+    create: (input: OrganizerCreateInput) => api<Organizer>("/organizers", { method: "POST", json: input }),
+    update: (id: number, input: OrganizerUpdateInput) => api<Organizer>(`/organizers/${id}`, { method: "PATCH", json: input }),
+  },
+  history: {
+    list: (sessionId: number) => api<DrawHistory[]>(`/sessions/${sessionId}/draw-history`),
+    updateNote: (sessionId: number, entryId: number, note: string) =>
+      api<DrawHistory>(`/sessions/${sessionId}/draw-history/${entryId}`, { method: "PATCH", json: { note } }),
+    remove: (sessionId: number, entryId: number) =>
+      api<{ ok: boolean }>(`/sessions/${sessionId}/draw-history/${entryId}`, { method: "DELETE" }),
+  },
+  clients: {
+    list: (month?: string) => api<ClientVisit[]>(month ? `/clients?month=${month}` : "/clients"),
+    create: (payload: ClientVisitInput) => api<ClientVisit>("/clients", { method: "POST", json: payload }),
+    update: (id: number, payload: Partial<ClientVisitInput>) => api<ClientVisit>(`/clients/${id}`, { method: "PATCH", json: payload }),
+    remove: (id: number) => api<{ ok: boolean }>(`/clients/${id}`, { method: "DELETE" }),
+  },
   sessions: {
     list: () => api<Session[]>("/sessions"),
     create: (payload: { name: string; date: string }) => api<Session>("/sessions", { method: "POST", json: payload }),
@@ -74,13 +100,13 @@ const apiResources = {
       api<Evaluation>(`/sessions/${sessionId}/evaluation/judges/${judgeId}`, { method: "DELETE" }),
     publicGet: (token: string) => api<PublicEvaluation>(`/judge/${token}`),
     identify: (token: string, payload: { name: string }) =>
-      api<Judge>(`/judge/${token}/identify`, { method: "POST", json: payload }),
-    scores: (token: string, judgeId: number) => api<JudgeScore[]>(`/judge/${token}/scores?judge_id=${judgeId}`),
+      api<{ judge: Judge; vote_token: string }>(`/judge/${token}/identify`, { method: "POST", json: payload }),
+    scores: (token: string, judgeId: number, voteToken: string) =>
+      api<JudgeScore[]>(`/judge/${token}/scores?judge_id=${judgeId}`, { headers: { "X-Judge-Token": voteToken } }),
     submitScores: (
       token: string,
+      voteToken: string,
       payload: { judge_id: number; team_id: number; scores: Array<{ criterion_id: number; score: number }>; comment?: string },
-    ) => api<JudgeScore[]>(`/judge/${token}/scores`, { method: "POST", json: payload }),
+    ) => api<JudgeScore[]>(`/judge/${token}/scores`, { method: "POST", json: payload, headers: { "X-Judge-Token": voteToken } }),
   },
 };
-
-export const resources = useLocalResources ? localResources : apiResources;

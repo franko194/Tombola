@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models import Assignment, Participant, SessionModel, Team, TeamMember, utc_now
 from app.schemas import ParticipantCreate, ParticipantOut, ParticipantUpdate
+from app.services.draw_history import archive_draw
 
 router = APIRouter(tags=["participants"])
 
@@ -19,7 +20,8 @@ def ensure_session(db: Session, session_id: int) -> SessionModel:
     return session
 
 
-def reset_generated_work(db: Session, session_id: int) -> None:
+def reset_generated_work(db: Session, session_id: int, reason: str) -> None:
+    archive_draw(db, session_id, reason)
     db.query(Assignment).filter(Assignment.session_id == session_id).delete()
     db.query(TeamMember).filter(TeamMember.team_id.in_(db.query(Team.id).filter(Team.session_id == session_id))).delete()
     db.query(Team).filter(Team.session_id == session_id).delete()
@@ -36,7 +38,7 @@ def create_participant(
     db: Session = Depends(get_db),
 ) -> Participant:
     ensure_session(db, session_id)
-    reset_generated_work(db, session_id)
+    reset_generated_work(db, session_id, "participant_added")
     participant = Participant(session_id=session_id, name=payload.name.strip(), ai_level=payload.ai_level)
     db.add(participant)
     db.commit()
@@ -59,7 +61,7 @@ def update_participant(
     participant = db.get(Participant, participant_id)
     if not participant:
         raise HTTPException(status_code=404, detail="Participant not found")
-    reset_generated_work(db, participant.session_id)
+    reset_generated_work(db, participant.session_id, "participant_edited")
     data = payload.model_dump(exclude_unset=True)
     if "name" in data and data["name"] is not None:
         participant.name = data["name"].strip()
@@ -78,7 +80,7 @@ def delete_participant(participant_id: int, db: Session = Depends(get_db)) -> di
         raise HTTPException(status_code=404, detail="Participant not found")
     session_id = participant.session_id
     db.delete(participant)
-    reset_generated_work(db, session_id)
+    reset_generated_work(db, session_id, "participant_deleted")
     db.commit()
     return {"ok": True}
 
@@ -114,17 +116,21 @@ async def import_participants(
         text = content.decode("utf-8-sig")
         rows = list(csv.DictReader(StringIO(text)))
 
-    created: list[Participant] = []
-    reset_generated_work(db, session_id)
+    parsed: list[tuple[str, int]] = []
     for row in rows:
         name = str(row.get("nombre") or row.get("name") or "").strip()
         raw_level = row.get("nivelIA", row.get("ai_level"))
         if not name:
             raise HTTPException(status_code=400, detail="Imported rows must include nombre")
-        participant = Participant(session_id=session_id, name=name, ai_level=normalize_level(raw_level))
-        db.add(participant)
-        created.append(participant)
+        parsed.append((name, normalize_level(raw_level)))
+    if not parsed:
+        raise HTTPException(status_code=400, detail="The file has no participants")
 
+    # The import replaces the whole participant list for this session.
+    reset_generated_work(db, session_id, "participants_imported")
+    db.query(Participant).filter(Participant.session_id == session_id).delete()
+    created = [Participant(session_id=session_id, name=name, ai_level=level) for name, level in parsed]
+    db.add_all(created)
     db.commit()
     for participant in created:
         db.refresh(participant)

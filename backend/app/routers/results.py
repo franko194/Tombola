@@ -7,6 +7,7 @@ from app.database import get_db
 from app.models import Assignment, ResultSnapshot, SessionModel, Team, UseCase, utc_now
 from app.routers.teams import serialize_teams
 from app.schemas import AssignmentOut, AssignmentRequest, ResultsOut
+from app.services.draw_history import archive_draw
 from app.services.usecase_assigner import UseCaseInput, assign_use_cases
 
 router = APIRouter(tags=["results"])
@@ -59,6 +60,8 @@ def assign_cases(
     except ValueError as error:
         raise HTTPException(status_code=400, detail=str(error))
 
+    if db.query(Assignment).filter(Assignment.session_id == session_id).first():
+        archive_draw(db, session_id, "cases_reassigned")
     db.query(Assignment).filter(Assignment.session_id == session_id).delete()
     for team_id, use_case in assigned.items():
         db.add(Assignment(session_id=session_id, team_id=team_id, use_case_id=use_case.id))

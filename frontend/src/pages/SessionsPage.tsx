@@ -1,10 +1,22 @@
-import { CalendarPlus, FolderOpen, Play } from "lucide-react";
+import { CalendarDays, CalendarPlus, FolderOpen, Play, Users } from "lucide-react";
 import { useEffect, useState } from "react";
 import { resources } from "../api/resources";
 import { StatusBadge } from "../components/StatusBadge";
 import type { Session } from "../types";
 
-export function SessionsPage({ onSelect }: { onSelect: (session: Session) => void }) {
+export function SessionsPage({
+  onSelect,
+  onOpenClients,
+  onOpenOrganizers,
+  isAdmin,
+  onLogout,
+}: {
+  onSelect: (session: Session) => void;
+  onOpenClients: () => void;
+  onOpenOrganizers: () => void;
+  isAdmin: boolean;
+  onLogout: () => void;
+}) {
   const [sessions, setSessions] = useState<Session[]>([]);
   const [name, setName] = useState("IA Friday - Sesion semanal");
   const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
@@ -78,6 +90,21 @@ export function SessionsPage({ onSelect }: { onSelect: (session: Session) => voi
           <p className="mt-3 max-w-2xl text-base font-medium text-slate-600">
             Gestiona sesiones semanales, balancea equipos por experiencia en IA y asigna casos con una tombola visual.
           </p>
+          <div className="mt-5 flex flex-wrap gap-2">
+            <button className="btn-secondary" onClick={onOpenClients}>
+              <CalendarDays size={18} />
+              Calendario de clientes
+            </button>
+            {isAdmin ? (
+              <button className="btn-secondary" onClick={onOpenOrganizers}>
+                <Users size={18} />
+                Organizadores
+              </button>
+            ) : null}
+            <button className="btn-secondary" onClick={onLogout}>
+              Salir
+            </button>
+          </div>
         </div>
 
         {error ? <div className="mb-4 rounded-lg bg-red-50 p-3 font-semibold text-red-700">{error}</div> : null}

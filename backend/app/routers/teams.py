@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.models import Assignment, Participant, SessionModel, Team, TeamMember, utc_now
+from app.services.draw_history import archive_draw
 from app.schemas import BalanceOut, ManualTeamsUpdate, TeamGenerateRequest, TeamMemberOut, TeamOut, TeamsResponse
 from app.services.team_balancer import ParticipantInput, generate_snake_draft_teams
 
@@ -51,6 +52,7 @@ def generate_teams(
     if not session:
         raise HTTPException(status_code=404, detail="Session not found")
 
+    archive_draw(db, session_id, "teams_regenerated")
     db.query(Assignment).filter(Assignment.session_id == session_id).delete()
     db.query(TeamMember).filter(TeamMember.team_id.in_(db.query(Team.id).filter(Team.session_id == session_id))).delete()
     db.query(Team).filter(Team.session_id == session_id).delete()
@@ -119,6 +121,7 @@ def update_teams_manually(
     if set(requested_participant_ids) != set(participants.keys()):
         raise HTTPException(status_code=400, detail="All session participants must be assigned exactly once")
 
+    archive_draw(db, session_id, "teams_edited_manually")
     db.query(Assignment).filter(Assignment.session_id == session_id).delete()
     db.query(TeamMember).filter(TeamMember.team_id.in_(list(teams.keys()))).delete(synchronize_session=False)
 

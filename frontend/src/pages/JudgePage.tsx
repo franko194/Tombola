@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { resources } from "../api/resources";
 import type { Judge, JudgeScore, PublicEvaluation, Team } from "../types";
 
-type ScoreDraft = Record<string, number>;
+type ScoreDraft = Record<string, number | undefined>;
 
 const scoreLabels: Record<number, string> = {
   1: "Very Bad",
@@ -13,9 +13,38 @@ const scoreLabels: Record<number, string> = {
   5: "Very Good",
 };
 
+// The judge's identity and vote token stay on this device, so votes can only be sent by the judge who identified here.
+type StoredIdentity = { judge: Judge; voteToken: string };
+
+function storageKey(token: string) {
+  return `ia-friday-judge:${token}`;
+}
+
+function readStoredIdentity(token: string): StoredIdentity | null {
+  try {
+    const raw = window.localStorage.getItem(storageKey(token));
+    return raw ? (JSON.parse(raw) as StoredIdentity) : null;
+  } catch {
+    return null;
+  }
+}
+
+function writeStoredIdentity(token: string, identity: StoredIdentity | null) {
+  try {
+    if (identity) {
+      window.localStorage.setItem(storageKey(token), JSON.stringify(identity));
+    } else {
+      window.localStorage.removeItem(storageKey(token));
+    }
+  } catch {
+    // Storage can be blocked; the judge then has to identify again after a reload.
+  }
+}
+
 export function JudgePage({ token }: { token: string }) {
   const [evaluation, setEvaluation] = useState<PublicEvaluation | null>(null);
-  const [judge, setJudge] = useState<Judge | null>(null);
+  const [identity, setIdentity] = useState<StoredIdentity | null>(() => readStoredIdentity(token));
+  const judge = identity?.judge ?? null;
   const [scores, setScores] = useState<JudgeScore[]>([]);
   const [selectedTeamId, setSelectedTeamId] = useState<number | null>(null);
   const [draft, setDraft] = useState<ScoreDraft>({});
@@ -37,24 +66,32 @@ export function JudgePage({ token }: { token: string }) {
   }, [token]);
 
   useEffect(() => {
-    if (!judge) return;
-    void resources.evaluation.scores(token, judge.id).then(setScores).catch((err) => setError((err as Error).message));
-  }, [judge?.id, token]);
+    if (!identity) return;
+    resources.evaluation
+      .scores(token, identity.judge.id, identity.voteToken)
+      .then(setScores)
+      .catch((err) => {
+        // The vote token was revoked (judge removed or identified again elsewhere): ask for the name again.
+        writeStoredIdentity(token, null);
+        setIdentity(null);
+        setError((err as Error).message);
+      });
+  }, [identity?.judge.id, identity?.voteToken, token]);
 
   const selectedTeam = useMemo(() => evaluation?.teams.find((team) => team.id === selectedTeamId) ?? null, [evaluation?.teams, selectedTeamId]);
   const assignmentByTeam = useMemo(() => new Map(evaluation?.assignments.map((item) => [item.team_id, item]) ?? []), [evaluation?.assignments]);
+  const allCriteriaScored = evaluation ? evaluation.criteria.every((criterion) => draft[String(criterion.id)] !== undefined) : false;
 
   useEffect(() => {
     if (!evaluation || !selectedTeamId) return;
     const nextDraft: ScoreDraft = {};
     for (const criterion of evaluation.criteria) {
       const existing = scores.find((score) => score.team_id === selectedTeamId && score.criterion_id === criterion.id);
-      nextDraft[String(criterion.id)] = existing?.score ?? 3;
-      if (existing?.comment) setComment(existing.comment);
+      nextDraft[String(criterion.id)] = existing?.score;
     }
+    const existingComment = scores.find((score) => score.team_id === selectedTeamId && score.comment)?.comment;
     setDraft(nextDraft);
-    setSaved(false);
-    setSavedTeamName(null);
+    setComment(existingComment ?? "");
   }, [evaluation, selectedTeamId, scores]);
 
   useEffect(() => {
@@ -67,7 +104,10 @@ export function JudgePage({ token }: { token: string }) {
     event.preventDefault();
     try {
       setError("");
-      setJudge(await resources.evaluation.identify(token, { name }));
+      const result = await resources.evaluation.identify(token, { name });
+      const next = { judge: result.judge, voteToken: result.vote_token };
+      writeStoredIdentity(token, next);
+      setIdentity(next);
     } catch (err) {
       setError((err as Error).message);
     }
@@ -75,16 +115,16 @@ export function JudgePage({ token }: { token: string }) {
 
   async function submit(event: React.FormEvent) {
     event.preventDefault();
-    if (!judge || !selectedTeamId || !evaluation) return;
+    if (!identity || !selectedTeamId || !evaluation || !allCriteriaScored) return;
     try {
       setError("");
-      const submitted = await resources.evaluation.submitScores(token, {
-        judge_id: judge.id,
+      const submitted = await resources.evaluation.submitScores(token, identity.voteToken, {
+        judge_id: identity.judge.id,
         team_id: selectedTeamId,
         comment,
         scores: evaluation.criteria.map((criterion) => ({
           criterion_id: criterion.id,
-          score: draft[String(criterion.id)] ?? 3,
+          score: draft[String(criterion.id)] as number,
         })),
       });
       setScores(submitted);
@@ -113,6 +153,19 @@ export function JudgePage({ token }: { token: string }) {
           <p className="text-xs font-black uppercase tracking-[0.18em] text-teal-700">Jurado IA Friday</p>
           <h1 className="mt-2 break-words text-2xl font-black leading-tight text-slate-950 sm:text-3xl">{evaluation.session.name}</h1>
           <p className="mt-1 font-semibold text-slate-500">{evaluation.session.date}</p>
+          {judge ? (
+            <button
+              type="button"
+              className="mt-3 text-sm font-bold text-slate-500 underline"
+              onClick={() => {
+                writeStoredIdentity(token, null);
+                setIdentity(null);
+                setScores([]);
+              }}
+            >
+              No soy {judge.name}
+            </button>
+          ) : null}
           {evaluation.status === "prepared" ? (
             <p className="mt-3 rounded-lg bg-amber-50 p-3 font-bold text-amber-800">
               La votacion aun no esta abierta, pero puedes registrarte como jurado de esta fecha.
@@ -149,7 +202,11 @@ export function JudgePage({ token }: { token: string }) {
                     className={`flex items-center justify-between rounded-lg px-3 py-3 text-left font-bold ${
                       selectedTeamId === team.id ? "bg-slate-900 text-white" : "bg-slate-50 text-slate-700"
                     }`}
-                    onClick={() => setSelectedTeamId(team.id)}
+                    onClick={() => {
+                      setSelectedTeamId(team.id);
+                      setSaved(false);
+                      setSavedTeamName(null);
+                    }}
                   >
                     <span className="min-w-0 break-words">{team.name}</span>
                     {teamVoted(team) ? <CheckCircle2 size={18} className="text-teal-400" /> : null}
@@ -171,7 +228,9 @@ export function JudgePage({ token }: { token: string }) {
                     <span className="grid gap-1">
                       <span className="break-words text-base leading-5">{criterion.name}</span>
                       <strong className="rounded-md bg-teal-50 px-2 py-1 text-sm leading-5 text-teal-800">
-                        {draft[String(criterion.id)] ?? 3} - {scoreLabels[draft[String(criterion.id)] ?? 3]}
+                        {draft[String(criterion.id)] === undefined
+                          ? "Sin calificar"
+                          : `${draft[String(criterion.id)]} - ${scoreLabels[draft[String(criterion.id)] as number]}`}
                       </strong>
                     </span>
                     <input
@@ -206,7 +265,10 @@ export function JudgePage({ token }: { token: string }) {
                   </label>
                 ))}
                 <textarea className="input min-h-24" placeholder="Comentario opcional" value={comment} onChange={(event) => setComment(event.target.value)} />
-                <button className="btn-primary" disabled={evaluation.status !== "open"}>
+                {allCriteriaScored ? null : (
+                  <p className="rounded-lg bg-amber-50 p-3 font-bold text-amber-800">Califica todos los criterios antes de guardar.</p>
+                )}
+                <button className="btn-primary" disabled={evaluation.status !== "open" || !allCriteriaScored}>
                   <Send size={18} />
                   Guardar puntuacion
                 </button>

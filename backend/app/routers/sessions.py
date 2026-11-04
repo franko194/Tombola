@@ -6,7 +6,8 @@ from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.models import Participant, SessionModel, UseCase, utc_now
-from app.schemas import ResultsOut, SessionCreate, SessionDuplicate, SessionOut, SessionUpdate
+from app.schemas import DrawHistoryOut, DrawHistoryUpdate, ResultsOut, SessionCreate, SessionDuplicate, SessionOut, SessionUpdate
+from app.services.draw_history import archive_draw, get_draw_history_entry, list_draw_history, to_draw_history_out
 
 router = APIRouter(prefix="/sessions", tags=["sessions"])
 
@@ -125,11 +126,38 @@ def complete_session(session_id: int, db: Session = Depends(get_db)) -> ResultsO
     return snapshot
 
 
+@router.get("/{session_id}/draw-history", response_model=list[DrawHistoryOut])
+def get_draw_history(session_id: int, db: Session = Depends(get_db)) -> list[DrawHistoryOut]:
+    return list_draw_history(db, session_id)
+
+
+@router.patch("/{session_id}/draw-history/{entry_id}", response_model=DrawHistoryOut)
+def update_draw_history(session_id: int, entry_id: int, payload: DrawHistoryUpdate, db: Session = Depends(get_db)) -> DrawHistoryOut:
+    entry = get_draw_history_entry(db, session_id, entry_id)
+    if not entry:
+        raise HTTPException(status_code=404, detail="History entry not found")
+    note = (payload.note or "").strip()
+    entry.note = note or None
+    db.commit()
+    return to_draw_history_out(entry)
+
+
+@router.delete("/{session_id}/draw-history/{entry_id}")
+def delete_draw_history(session_id: int, entry_id: int, db: Session = Depends(get_db)) -> dict[str, bool]:
+    entry = get_draw_history_entry(db, session_id, entry_id)
+    if not entry:
+        raise HTTPException(status_code=404, detail="History entry not found")
+    db.delete(entry)
+    db.commit()
+    return {"ok": True}
+
+
 @router.delete("/{session_id}")
 def delete_session(session_id: int, db: Session = Depends(get_db)) -> dict[str, bool]:
     session = db.get(SessionModel, session_id)
     if not session:
         raise HTTPException(status_code=404, detail="Session not found")
+    archive_draw(db, session_id, "session_deleted")
     db.delete(session)
     db.commit()
     return {"ok": True}
