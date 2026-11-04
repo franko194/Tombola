@@ -4,17 +4,17 @@ import { resources } from "../api/resources";
 import type { DrawHistory, Session } from "../types";
 
 const reasonLabels: Record<string, string> = {
-  participant_added: "Se agrego un participante",
-  participant_edited: "Se edito un participante",
-  participant_deleted: "Se elimino un participante",
-  participants_imported: "Se importo la lista de participantes",
+  participant_added: "Se agregó un participante",
+  participant_edited: "Se editó un participante",
+  participant_deleted: "Se eliminó un participante",
+  participants_imported: "Se importó la lista de participantes",
   teams_regenerated: "Se regeneraron los equipos",
   teams_edited_manually: "Se editaron equipos a mano",
-  use_case_added: "Se agrego un caso",
-  use_case_edited: "Se edito un caso",
-  use_case_deleted: "Se elimino un caso",
-  cases_reassigned: "Se volvio a sortear los casos",
-  session_deleted: "Se elimino la sesion",
+  use_case_added: "Se agregó un caso",
+  use_case_edited: "Se editó un caso",
+  use_case_deleted: "Se eliminó un caso",
+  cases_reassigned: "Se volvió a sortear los casos",
+  session_deleted: "Se eliminó la sesión",
 };
 
 export function HistoryPage({ session }: { session: Session }) {
@@ -35,7 +35,7 @@ export function HistoryPage({ session }: { session: Session }) {
   }, [session.id]);
 
   async function editNote(entry: DrawHistory) {
-    const next = prompt("Nota para este registro (dejalo vacio para quitarla)", entry.note ?? "");
+    const next = prompt("Nota para este registro (déjalo vacío para quitarla)", entry.note ?? "");
     if (next === null) return;
     try {
       await resources.history.updateNote(session.id, entry.id, next);
@@ -46,7 +46,7 @@ export function HistoryPage({ session }: { session: Session }) {
   }
 
   async function remove(entry: DrawHistory) {
-    if (!confirm("Eliminar este registro del historial? No se puede deshacer.")) return;
+    if (!confirm("¿Eliminar este registro del historial? No se puede deshacer.")) return;
     try {
       await resources.history.remove(session.id, entry.id);
       await load();
@@ -60,7 +60,7 @@ export function HistoryPage({ session }: { session: Session }) {
       <div className="lab-surface rounded-lg p-5">
         <h2 className="text-2xl font-black text-slate-950">Historial de sorteos</h2>
         <p className="mt-1 font-medium text-slate-600">
-          Cada vez que se reemplaza o borra un sorteo, queda guardado aqui. Puedes agregarle una nota o eliminarlo.
+          Cada vez que se reemplaza o borra un sorteo, queda guardado aquí. Puedes agregarle una nota o eliminarlo.
         </p>
         {error ? <p className="mt-3 rounded-lg bg-red-50 p-3 font-semibold text-red-700">{error}</p> : null}
       </div>
@@ -104,7 +104,7 @@ export function HistoryPage({ session }: { session: Session }) {
         </article>
       ))}
 
-      {!entries.length ? <p className="lab-surface rounded-lg p-5 font-semibold text-slate-500">Aun no hay sorteos reemplazados en esta sesion.</p> : null}
+      {!entries.length ? <p className="lab-surface rounded-lg p-5 font-semibold text-slate-500">Aún no hay sorteos reemplazados en esta sesión.</p> : null}
     </section>
   );
 }

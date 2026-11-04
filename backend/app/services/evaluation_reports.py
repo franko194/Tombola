@@ -43,6 +43,8 @@ def _collect_report_context(db: Session, session: SessionModel) -> dict[str, Any
 
     score_rows = []
     comments_by_team: dict[int, list[str]] = defaultdict(list)
+    # A judge's comment is stored on every criterion row of a team, so it is collected once per judge and team.
+    commented: set[tuple[int, int]] = set()
     for score in scores:
         judge = judges.get(score.judge_id)
         criterion = next((item for item in criteria if item.id == score.criterion_id), None)
@@ -54,7 +56,8 @@ def _collect_report_context(db: Session, session: SessionModel) -> dict[str, Any
             "comment": score.comment,
         }
         score_rows.append(row)
-        if score.comment and score.comment.strip():
+        if score.comment and score.comment.strip() and (score.team_id, score.judge_id) not in commented:
+            commented.add((score.team_id, score.judge_id))
             comments_by_team[score.team_id].append(score.comment.strip())
 
     return {

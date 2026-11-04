@@ -51,7 +51,7 @@ def list_organizers(db: Session = Depends(get_db)) -> list[OrganizerOut]:
 def create_organizer(payload: OrganizerCreate, db: Session = Depends(get_db)) -> OrganizerOut:
     email = payload.email.strip().lower()
     if "@" not in email:
-        raise HTTPException(status_code=400, detail="El correo no es valido")
+        raise HTTPException(status_code=400, detail="El correo no es válido")
     if db.query(Organizer).filter(Organizer.email == email).first():
         raise HTTPException(status_code=409, detail="Ese correo ya es organizador")
     organizer = Organizer(

@@ -1,17 +1,13 @@
-import { CheckCircle2, Send } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { CheckCircle2, Circle, Loader2, Send } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { resources } from "../api/resources";
+import { criterionLabel, scoreLabels } from "../lib/scoring";
 import type { Judge, JudgeScore, PublicEvaluation, Team } from "../types";
 
-type ScoreDraft = Record<string, number | undefined>;
+// Scores and comment a judge is editing for one team.
+type TeamDraft = { scores: Record<number, number>; comment: string };
 
-const scoreLabels: Record<number, string> = {
-  1: "Very Bad",
-  2: "Insufficient",
-  3: "Acceptable",
-  4: "Good",
-  5: "Very Good",
-};
+const REFRESH_MS = 8000;
 
 // The judge's identity and vote token stay on this device, so votes can only be sent by the judge who identified here.
 type StoredIdentity = { judge: Judge; voteToken: string };
@@ -41,29 +37,48 @@ function writeStoredIdentity(token: string, identity: StoredIdentity | null) {
   }
 }
 
+function savedDraft(scores: JudgeScore[], teamId: number): TeamDraft {
+  const teamScores = scores.filter((score) => score.team_id === teamId);
+  return {
+    scores: Object.fromEntries(teamScores.map((score) => [score.criterion_id, score.score])),
+    comment: teamScores.find((score) => score.comment)?.comment ?? "",
+  };
+}
+
 export function JudgePage({ token }: { token: string }) {
   const [evaluation, setEvaluation] = useState<PublicEvaluation | null>(null);
   const [identity, setIdentity] = useState<StoredIdentity | null>(() => readStoredIdentity(token));
   const judge = identity?.judge ?? null;
   const [scores, setScores] = useState<JudgeScore[]>([]);
   const [selectedTeamId, setSelectedTeamId] = useState<number | null>(null);
-  const [draft, setDraft] = useState<ScoreDraft>({});
-  const [comment, setComment] = useState("");
+  // Unsaved edits per team, so switching teams or reloading the page does not lose them.
+  const [drafts, setDrafts] = useState<Record<number, TeamDraft>>({});
   const [name, setName] = useState("");
   const [error, setError] = useState("");
-  const [saved, setSaved] = useState(false);
-  const [savedTeamName, setSavedTeamName] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
   const [notification, setNotification] = useState<string | null>(null);
+  const formRef = useRef<HTMLFormElement>(null);
 
-  async function load() {
+  const draftKey = identity ? `ia-friday-judge-drafts:${token}:${identity.judge.id}` : null;
+
+  async function refresh() {
     const data = await resources.evaluation.publicGet(token);
-    setEvaluation(data);
-    setSelectedTeamId(data.teams[0]?.id ?? null);
+    // Keep the same object when nothing changed so periodic refreshes do not re-render the screen.
+    setEvaluation((current) => (current && JSON.stringify(current) === JSON.stringify(data) ? current : data));
   }
 
   useEffect(() => {
-    void load().catch((err) => setError((err as Error).message));
+    void refresh().catch((err) => setError((err as Error).message));
   }, [token]);
+
+  // The organizer opens and closes voting while judges wait with the page open, so keep it up to date.
+  useEffect(() => {
+    if (evaluation?.status === "closed") return;
+    const timer = window.setInterval(() => {
+      if (!document.hidden) void refresh().catch(() => undefined);
+    }, REFRESH_MS);
+    return () => window.clearInterval(timer);
+  }, [token, evaluation?.status]);
 
   useEffect(() => {
     if (!identity) return;
@@ -78,21 +93,57 @@ export function JudgePage({ token }: { token: string }) {
       });
   }, [identity?.judge.id, identity?.voteToken, token]);
 
-  const selectedTeam = useMemo(() => evaluation?.teams.find((team) => team.id === selectedTeamId) ?? null, [evaluation?.teams, selectedTeamId]);
-  const assignmentByTeam = useMemo(() => new Map(evaluation?.assignments.map((item) => [item.team_id, item]) ?? []), [evaluation?.assignments]);
-  const allCriteriaScored = evaluation ? evaluation.criteria.every((criterion) => draft[String(criterion.id)] !== undefined) : false;
+  useEffect(() => {
+    if (!draftKey) {
+      setDrafts({});
+      return;
+    }
+    try {
+      const raw = window.localStorage.getItem(draftKey);
+      setDrafts(raw ? (JSON.parse(raw) as Record<number, TeamDraft>) : {});
+    } catch {
+      setDrafts({});
+    }
+  }, [draftKey]);
 
   useEffect(() => {
-    if (!evaluation || !selectedTeamId) return;
-    const nextDraft: ScoreDraft = {};
-    for (const criterion of evaluation.criteria) {
-      const existing = scores.find((score) => score.team_id === selectedTeamId && score.criterion_id === criterion.id);
-      nextDraft[String(criterion.id)] = existing?.score;
+    if (!draftKey) return;
+    try {
+      if (Object.keys(drafts).length) window.localStorage.setItem(draftKey, JSON.stringify(drafts));
+      else window.localStorage.removeItem(draftKey);
+    } catch {
+      // Drafts are a convenience; they still work in memory when storage is blocked.
     }
-    const existingComment = scores.find((score) => score.team_id === selectedTeamId && score.comment)?.comment;
-    setDraft(nextDraft);
-    setComment(existingComment ?? "");
-  }, [evaluation, selectedTeamId, scores]);
+  }, [drafts, draftKey]);
+
+  const teams = evaluation?.teams ?? [];
+  const criteria = evaluation?.criteria ?? [];
+  const selectedTeam = useMemo(() => teams.find((team) => team.id === selectedTeamId) ?? null, [teams, selectedTeamId]);
+  const assignmentByTeam = useMemo(() => new Map(evaluation?.assignments.map((item) => [item.team_id, item]) ?? []), [evaluation?.assignments]);
+
+  function teamVoted(team: Team, savedScores: JudgeScore[] = scores) {
+    return criteria.length > 0 && criteria.every((criterion) => savedScores.some((score) => score.team_id === team.id && score.criterion_id === criterion.id));
+  }
+
+  const votedCount = teams.filter((team) => teamVoted(team)).length;
+  const allVoted = teams.length > 0 && votedCount === teams.length;
+
+  // Start on the first team the judge has not voted yet.
+  useEffect(() => {
+    if (selectedTeamId !== null || !teams.length) return;
+    setSelectedTeamId((teams.find((team) => !teamVoted(team)) ?? teams[0]).id);
+  }, [teams, scores, selectedTeamId]);
+
+  const current: TeamDraft | null = selectedTeam ? drafts[selectedTeam.id] ?? savedDraft(scores, selectedTeam.id) : null;
+  const hasUnsavedChanges = selectedTeam ? Boolean(drafts[selectedTeam.id]) : false;
+  const missingCriteria = current ? criteria.filter((criterion) => current.scores[criterion.id] === undefined).length : 0;
+  const votingOpen = evaluation?.status === "open";
+
+  function updateCurrent(change: (draft: TeamDraft) => TeamDraft) {
+    if (!selectedTeam) return;
+    const teamId = selectedTeam.id;
+    setDrafts((previous) => ({ ...previous, [teamId]: change(previous[teamId] ?? savedDraft(scores, teamId)) }));
+  }
 
   useEffect(() => {
     if (!notification) return;
@@ -115,182 +166,241 @@ export function JudgePage({ token }: { token: string }) {
 
   async function submit(event: React.FormEvent) {
     event.preventDefault();
-    if (!identity || !selectedTeamId || !evaluation || !allCriteriaScored) return;
+    if (!identity || !selectedTeam || !current || missingCriteria > 0 || saving) return;
+    const team = selectedTeam;
+    setSaving(true);
     try {
       setError("");
       const submitted = await resources.evaluation.submitScores(token, identity.voteToken, {
         judge_id: identity.judge.id,
-        team_id: selectedTeamId,
-        comment,
-        scores: evaluation.criteria.map((criterion) => ({
-          criterion_id: criterion.id,
-          score: draft[String(criterion.id)] as number,
-        })),
+        team_id: team.id,
+        comment: current.comment,
+        scores: criteria.map((criterion) => ({ criterion_id: criterion.id, score: current.scores[criterion.id] })),
       });
       setScores(submitted);
-      setSaved(true);
-      const teamName = selectedTeam?.name ?? null;
-      setSavedTeamName(teamName);
-      setNotification(teamName ? `Puntuaste correctamente al equipo "${teamName}".` : "Puntuacion guardada correctamente.");
+      setDrafts((previous) => {
+        const next = { ...previous };
+        delete next[team.id];
+        return next;
+      });
+      // Move on to the next team that still needs a vote, so the judge never has to look for it.
+      const startIndex = teams.findIndex((item) => item.id === team.id);
+      const nextTeam = [...teams.slice(startIndex + 1), ...teams.slice(0, startIndex)].find((item) => !teamVoted(item, submitted));
+      if (nextTeam) {
+        setSelectedTeamId(nextTeam.id);
+        setNotification(`Voto guardado para "${team.name}". Sigue "${nextTeam.name}".`);
+        window.setTimeout(() => formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
+      } else {
+        setNotification(`Voto guardado para "${team.name}". ¡Ya votaste a todos los equipos!`);
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      }
     } catch (err) {
       setError((err as Error).message);
+    } finally {
+      setSaving(false);
     }
   }
 
-  function teamVoted(team: Team) {
-    if (!evaluation) return false;
-    return evaluation.criteria.every((criterion) => scores.some((score) => score.team_id === team.id && score.criterion_id === criterion.id));
-  }
-
   if (!evaluation) {
-    return <div className="min-h-screen bg-[#eef3f8] p-5 font-bold text-slate-700">{error || "Cargando evaluacion..."}</div>;
+    return <div className="min-h-screen bg-[#eef3f8] p-5 font-bold text-slate-700">{error || "Cargando evaluación..."}</div>;
   }
 
   return (
     <div className="min-h-screen bg-[#eef3f8]">
-      <main className="mx-auto grid w-full max-w-3xl gap-5 overflow-hidden px-4 py-5">
+      <main className="mx-auto grid w-full max-w-3xl gap-4 overflow-hidden px-4 py-5">
         <section className="lab-surface min-w-0 rounded-lg p-5">
           <p className="text-xs font-black uppercase tracking-[0.18em] text-teal-700">Jurado IA Friday</p>
           <h1 className="mt-2 break-words text-2xl font-black leading-tight text-slate-950 sm:text-3xl">{evaluation.session.name}</h1>
           <p className="mt-1 font-semibold text-slate-500">{evaluation.session.date}</p>
           {judge ? (
-            <button
-              type="button"
-              className="mt-3 text-sm font-bold text-slate-500 underline"
-              onClick={() => {
-                writeStoredIdentity(token, null);
-                setIdentity(null);
-                setScores([]);
-              }}
-            >
-              No soy {judge.name}
-            </button>
+            <p className="mt-3 text-sm font-semibold text-slate-600">
+              Votando como <strong className="text-slate-900">{judge.name}</strong>{" "}
+              <button
+                type="button"
+                className="font-bold text-slate-500 underline"
+                onClick={() => {
+                  writeStoredIdentity(token, null);
+                  setIdentity(null);
+                  setScores([]);
+                  setSelectedTeamId(null);
+                }}
+              >
+                No soy yo
+              </button>
+            </p>
           ) : null}
           {evaluation.status === "prepared" ? (
             <p className="mt-3 rounded-lg bg-amber-50 p-3 font-bold text-amber-800">
-              La votacion aun no esta abierta, pero puedes registrarte como jurado de esta fecha.
+              La votación aún no está abierta. Puedes registrarte ahora: esta pantalla se actualizará sola cuando el organizador la abra.
             </p>
           ) : null}
-          {evaluation.status === "closed" ? <p className="mt-3 rounded-lg bg-amber-50 p-3 font-bold text-amber-800">La evaluacion esta cerrada.</p> : null}
+          {evaluation.status === "closed" ? (
+            <p className="mt-3 rounded-lg bg-amber-50 p-3 font-bold text-amber-800">La votación está cerrada. ¡Gracias por participar!</p>
+          ) : null}
           {error ? <p className="mt-3 rounded-lg bg-red-50 p-3 font-semibold text-red-700">{error}</p> : null}
         </section>
 
         {!judge ? (
           <form className="lab-surface grid min-w-0 gap-4 rounded-lg p-5" onSubmit={(event) => void identify(event)}>
-            <h2 className="text-xl font-black text-slate-950">Identificate como jurado</h2>
-            <input className="input" placeholder="Nombre" value={name} onChange={(event) => setName(event.target.value)} required />
-            <button className="btn-primary" disabled={evaluation.status === "closed"}>
+            <div>
+              <h2 className="text-xl font-black text-slate-950">¿Cómo te llamas?</h2>
+              <p className="mt-1 font-medium text-slate-600">Escribe tu nombre para empezar a votar.</p>
+            </div>
+            <input
+              className="input !min-h-12 text-lg"
+              placeholder="Tu nombre"
+              value={name}
+              autoFocus
+              autoComplete="name"
+              enterKeyHint="go"
+              onChange={(event) => setName(event.target.value)}
+              required
+            />
+            <button className="btn-primary !min-h-12 text-lg" disabled={evaluation.status === "closed"}>
               Continuar
             </button>
           </form>
+        ) : evaluation.status === "prepared" ? (
+          <section className="lab-surface min-w-0 rounded-lg p-5">
+            <h2 className="text-xl font-black text-slate-950">Registro recibido</h2>
+            <p className="mt-2 font-semibold text-slate-600">
+              Gracias, {judge.name}. Ya quedaste registrado como jurado. Cuando el organizador abra la votación, aparecerán aquí los equipos para puntuar.
+            </p>
+          </section>
         ) : (
-          evaluation.status === "prepared" ? (
-            <section className="lab-surface min-w-0 rounded-lg p-5">
-              <h2 className="text-xl font-black text-slate-950">Registro recibido</h2>
-              <p className="mt-2 font-semibold text-slate-600">
-                Gracias, {judge.name}. Ya quedaste registrado como jurado para esta sesion. Cuando el organizador abra la votacion, actualiza esta pagina para puntuar los equipos.
-              </p>
-            </section>
-          ) : (
           <>
             <section className="lab-surface min-w-0 rounded-lg p-5">
-              <h2 className="text-xl font-black text-slate-950">Equipos</h2>
+              <div className="flex items-baseline justify-between gap-3">
+                <h2 className="text-xl font-black text-slate-950">Equipos</h2>
+                <p className="text-sm font-black text-teal-800">
+                  {votedCount} de {teams.length} votados
+                </p>
+              </div>
+              <div className="mt-2 h-2 overflow-hidden rounded-full bg-slate-100" aria-hidden="true">
+                <div className="h-full rounded-full bg-teal-600 transition-all" style={{ width: `${teams.length ? (votedCount / teams.length) * 100 : 0}%` }} />
+              </div>
+              {allVoted ? (
+                <p className="mt-3 rounded-lg bg-teal-50 p-3 font-bold text-teal-800">
+                  ¡Gracias! Ya votaste a todos los equipos. Si cambias de opinión, puedes ajustar un voto mientras la votación siga abierta.
+                </p>
+              ) : null}
               <div className="mt-3 grid gap-2">
-                {evaluation.teams.map((team) => (
-                  <button
-                    key={team.id}
-                    className={`flex items-center justify-between rounded-lg px-3 py-3 text-left font-bold ${
-                      selectedTeamId === team.id ? "bg-slate-900 text-white" : "bg-slate-50 text-slate-700"
-                    }`}
-                    onClick={() => {
-                      setSelectedTeamId(team.id);
-                      setSaved(false);
-                      setSavedTeamName(null);
-                    }}
-                  >
-                    <span className="min-w-0 break-words">{team.name}</span>
-                    {teamVoted(team) ? <CheckCircle2 size={18} className="text-teal-400" /> : null}
-                  </button>
-                ))}
+                {teams.map((team) => {
+                  const voted = teamVoted(team);
+                  const selected = selectedTeamId === team.id;
+                  return (
+                    <button
+                      key={team.id}
+                      type="button"
+                      aria-pressed={selected}
+                      className={`flex min-h-14 items-center justify-between gap-3 rounded-lg px-3 py-2 text-left transition ${
+                        selected ? "bg-slate-900 text-white" : "bg-slate-50 text-slate-700"
+                      }`}
+                      onClick={() => setSelectedTeamId(team.id)}
+                    >
+                      <span className="min-w-0">
+                        <span className="block break-words font-bold">{team.name}</span>
+                        <span className={`block break-words text-sm font-medium ${selected ? "text-slate-300" : "text-slate-500"}`}>
+                          {assignmentByTeam.get(team.id)?.use_case_title ?? "Sin caso asignado"}
+                        </span>
+                      </span>
+                      {voted ? (
+                        <CheckCircle2 size={22} className={selected ? "shrink-0 text-teal-300" : "shrink-0 text-teal-600"} />
+                      ) : (
+                        <Circle size={22} className={selected ? "shrink-0 text-slate-500" : "shrink-0 text-slate-300"} />
+                      )}
+                    </button>
+                  );
+                })}
+                {!teams.length ? <p className="rounded-lg bg-slate-50 p-3 font-semibold text-slate-500">Aún no hay equipos para votar.</p> : null}
               </div>
             </section>
 
-            {selectedTeam ? (
-              <form className="lab-surface grid min-w-0 gap-4 rounded-lg p-5" onSubmit={(event) => void submit(event)}>
+            {selectedTeam && current ? (
+              <form
+                key={selectedTeam.id}
+                ref={formRef}
+                className="lab-surface grid min-w-0 gap-5 rounded-lg p-5"
+                onSubmit={(event) => void submit(event)}
+              >
                 <div>
                   <h2 className="break-words text-2xl font-black leading-tight text-slate-950">{selectedTeam.name}</h2>
-                  <p className="break-words font-semibold text-slate-500">
-                    Caso: {assignmentByTeam.get(selectedTeam.id)?.use_case_title ?? "Sin caso asignado"}
+                  <p className="break-words font-semibold text-slate-500">Caso: {assignmentByTeam.get(selectedTeam.id)?.use_case_title ?? "Sin caso asignado"}</p>
+                  <p className="mt-2 text-sm font-bold text-slate-500">
+                    Puntúa de 1 a {criteria[0]?.max_score ?? 5}: 1 = {scoreLabels[1]}, {criteria[0]?.max_score ?? 5} = {scoreLabels[criteria[0]?.max_score ?? 5]}
                   </p>
                 </div>
-                {evaluation.criteria.map((criterion) => (
-                  <label key={criterion.id} className="grid gap-2 font-bold text-slate-700">
-                    <span className="grid gap-1">
-                      <span className="break-words text-base leading-5">{criterion.name}</span>
-                      <strong className="rounded-md bg-teal-50 px-2 py-1 text-sm leading-5 text-teal-800">
-                        {draft[String(criterion.id)] === undefined
-                          ? "Sin calificar"
-                          : `${draft[String(criterion.id)]} - ${scoreLabels[draft[String(criterion.id)] as number]}`}
-                      </strong>
-                    </span>
-                    <input
-                      type="range"
-                      min={1}
-                      max={criterion.max_score}
-                      value={draft[String(criterion.id)] ?? 3}
-                      onChange={(event) => setDraft((current) => ({ ...current, [String(criterion.id)]: Number(event.target.value) }))}
-                    />
-                    <div className="grid grid-cols-5 gap-1 text-center text-[11px] font-black uppercase tracking-0 text-slate-400">
-                      <span>
-                        <span className="block text-slate-500">1</span>
-                        <span className="hidden sm:block">Very Bad</span>
-                      </span>
-                      <span>
-                        <span className="block text-slate-500">2</span>
-                        <span className="hidden sm:block">Insufficient</span>
-                      </span>
-                      <span>
-                        <span className="block text-slate-500">3</span>
-                        <span className="hidden sm:block">Acceptable</span>
-                      </span>
-                      <span>
-                        <span className="block text-slate-500">4</span>
-                        <span className="hidden sm:block">Good</span>
-                      </span>
-                      <span>
-                        <span className="block text-slate-500">5</span>
-                        <span className="hidden sm:block">Very Good</span>
-                      </span>
+
+                {criteria.map((criterion) => {
+                  const value = current.scores[criterion.id];
+                  return (
+                    <div key={criterion.id} role="group" aria-label={criterionLabel(criterion.name)} className="grid gap-2">
+                      <div className="flex flex-wrap items-baseline justify-between gap-x-3">
+                        <span className="break-words text-base font-black leading-5 text-slate-800">{criterionLabel(criterion.name)}</span>
+                        <span className={`text-sm font-bold ${value === undefined ? "text-slate-400" : "text-teal-800"}`}>
+                          {value === undefined ? "Toca un número" : `${value} · ${scoreLabels[value] ?? ""}`}
+                        </span>
+                      </div>
+                      <div className="grid grid-cols-5 gap-2">
+                        {Array.from({ length: criterion.max_score }, (_, index) => index + 1).map((option) => (
+                          <button
+                            key={option}
+                            type="button"
+                            aria-pressed={value === option}
+                            disabled={!votingOpen}
+                            className={`min-h-14 rounded-xl border-2 text-xl font-black transition disabled:opacity-50 ${
+                              value === option
+                                ? "border-teal-600 bg-teal-600 text-white"
+                                : "border-slate-200 bg-white text-slate-700 active:bg-slate-100"
+                            }`}
+                            onClick={() => updateCurrent((draft) => ({ ...draft, scores: { ...draft.scores, [criterion.id]: option } }))}
+                          >
+                            {option}
+                          </button>
+                        ))}
+                      </div>
                     </div>
-                  </label>
-                ))}
-                <textarea className="input min-h-24" placeholder="Comentario opcional" value={comment} onChange={(event) => setComment(event.target.value)} />
-                {allCriteriaScored ? null : (
-                  <p className="rounded-lg bg-amber-50 p-3 font-bold text-amber-800">Califica todos los criterios antes de guardar.</p>
-                )}
-                <button className="btn-primary" disabled={evaluation.status !== "open" || !allCriteriaScored}>
-                  <Send size={18} />
-                  Guardar puntuacion
-                </button>
-                {saved ? (
-                  <p className="rounded-lg bg-teal-50 p-3 font-bold text-teal-800">
-                    Puntuaste correctamente al equipo {savedTeamName ? `"${savedTeamName}".` : ""}
-                  </p>
-                ) : null}
+                  );
+                })}
+
+                <label className="grid gap-2 text-sm font-bold text-slate-700">
+                  Comentario (opcional)
+                  <textarea
+                    className="input min-h-24 text-base font-normal"
+                    placeholder="¿Qué te gustó o qué mejorarías?"
+                    value={current.comment}
+                    disabled={!votingOpen}
+                    onChange={(event) => updateCurrent((draft) => ({ ...draft, comment: event.target.value }))}
+                  />
+                </label>
+
+                <div className="sticky bottom-0 -mx-5 -mb-5 grid gap-2 rounded-b-lg border-t border-slate-200 bg-white/95 p-4 backdrop-blur">
+                  {votingOpen && missingCriteria > 0 ? (
+                    <p className="text-center text-sm font-bold text-amber-800">
+                      {missingCriteria === 1 ? "Falta 1 criterio por calificar" : `Faltan ${missingCriteria} criterios por calificar`}
+                    </p>
+                  ) : null}
+                  {votingOpen && missingCriteria === 0 && hasUnsavedChanges ? (
+                    <p className="text-center text-sm font-bold text-slate-500">Cambios sin guardar</p>
+                  ) : null}
+                  <button className="btn-primary !min-h-12 text-lg" disabled={!votingOpen || missingCriteria > 0 || saving}>
+                    {saving ? <Loader2 size={20} className="animate-spin" /> : <Send size={20} />}
+                    {saving ? "Guardando..." : teamVoted(selectedTeam) ? "Actualizar voto" : "Guardar voto"}
+                  </button>
+                </div>
               </form>
             ) : null}
           </>
-          )
         )}
       </main>
       {notification ? (
-        <div className="fixed inset-x-0 bottom-4 z-50 flex justify-center px-4 sm:bottom-6">
-          <div className="w-full max-w-lg rounded-3xl border border-teal-100 bg-white/95 px-4 py-3 shadow-2xl shadow-teal-200/30 backdrop-blur-xl ring-1 ring-slate-200 sm:px-5">
+        <div className="pointer-events-none fixed inset-x-0 top-4 z-50 flex justify-center px-4">
+          <div className="w-full max-w-lg rounded-2xl border border-teal-100 bg-white/95 px-4 py-3 shadow-2xl shadow-teal-200/30 backdrop-blur-xl ring-1 ring-slate-200">
             <div className="flex items-center gap-3">
-              <span className="inline-flex h-11 w-11 items-center justify-center rounded-full bg-teal-600 text-white shadow-lg shadow-teal-500/20">
+              <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-teal-600 text-white">
                 <CheckCircle2 size={20} />
               </span>
-              <p className="text-sm font-semibold leading-6 text-slate-900">{notification}</p>
+              <p className="text-sm font-semibold leading-5 text-slate-900">{notification}</p>
             </div>
           </div>
         </div>

@@ -1,24 +1,12 @@
-import { CalendarDays, CalendarPlus, FolderOpen, Play, Users } from "lucide-react";
+import { CalendarPlus, FolderOpen, Play } from "lucide-react";
 import { useEffect, useState } from "react";
 import { resources } from "../api/resources";
 import { StatusBadge } from "../components/StatusBadge";
 import type { Session } from "../types";
 
-export function SessionsPage({
-  onSelect,
-  onOpenClients,
-  onOpenOrganizers,
-  isAdmin,
-  onLogout,
-}: {
-  onSelect: (session: Session) => void;
-  onOpenClients: () => void;
-  onOpenOrganizers: () => void;
-  isAdmin: boolean;
-  onLogout: () => void;
-}) {
+export function SessionsPage({ onSelect }: { onSelect: (session: Session) => void }) {
   const [sessions, setSessions] = useState<Session[]>([]);
-  const [name, setName] = useState("IA Friday - Sesion semanal");
+  const [name, setName] = useState("IA Friday - Sesión semanal");
   const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [error, setError] = useState("");
 
@@ -44,9 +32,9 @@ export function SessionsPage({
   }
 
   async function editSession(session: Session) {
-    const nextName = prompt("Nombre de la sesion", session.name);
+    const nextName = prompt("Nombre de la sesión", session.name);
     if (!nextName) return;
-    const nextDate = prompt("Fecha de la sesion", session.date);
+    const nextDate = prompt("Fecha de la sesión", session.date);
     if (!nextDate) return;
     try {
       await resources.sessions.update(session.id, { name: nextName, date: nextDate });
@@ -57,9 +45,9 @@ export function SessionsPage({
   }
 
   async function duplicateSession(session: Session) {
-    const nextName = prompt("Nombre de la nueva sesion", `${session.name} - copia`);
+    const nextName = prompt("Nombre de la nueva sesión", `${session.name} - copia`);
     if (!nextName) return;
-    const nextDate = prompt("Fecha de la nueva sesion", new Date().toISOString().slice(0, 10));
+    const nextDate = prompt("Fecha de la nueva sesión", new Date().toISOString().slice(0, 10));
     if (!nextDate) return;
     try {
       await resources.sessions.duplicate(session.id, { name: nextName, date: nextDate });
@@ -70,7 +58,7 @@ export function SessionsPage({
   }
 
   async function archiveSession(session: Session) {
-    if (!confirm(`Archivar la sesion "${session.name}"? Dejare de mostrarla en el historial principal.`)) {
+    if (!confirm(`¿Archivar la sesión "${session.name}"? Dejará de mostrarse en el historial principal.`)) {
       return;
     }
     try {
@@ -82,29 +70,14 @@ export function SessionsPage({
   }
 
   return (
-    <main className="min-h-screen bg-[#eef3f8] px-4 py-8">
+    <main className="min-h-[calc(100vh-57px)] bg-[#eef3f8] px-4 py-8">
       <section className="mx-auto max-w-6xl">
         <div className="mb-8">
           <p className="text-xs font-black uppercase tracking-[0.2em] text-teal-700">Innovation Lab</p>
-          <h1 className="mt-2 text-4xl font-black text-slate-950">IA Friday Tombola</h1>
+          <h1 className="mt-2 text-4xl font-black text-slate-950">IA Friday Tómbola</h1>
           <p className="mt-3 max-w-2xl text-base font-medium text-slate-600">
-            Gestiona sesiones semanales, balancea equipos por experiencia en IA y asigna casos con una tombola visual.
+            Gestiona sesiones semanales, balancea equipos por experiencia en IA y asigna casos con una tómbola visual.
           </p>
-          <div className="mt-5 flex flex-wrap gap-2">
-            <button className="btn-secondary" onClick={onOpenClients}>
-              <CalendarDays size={18} />
-              Calendario de clientes
-            </button>
-            {isAdmin ? (
-              <button className="btn-secondary" onClick={onOpenOrganizers}>
-                <Users size={18} />
-                Organizadores
-              </button>
-            ) : null}
-            <button className="btn-secondary" onClick={onLogout}>
-              Salir
-            </button>
-          </div>
         </div>
 
         {error ? <div className="mb-4 rounded-lg bg-red-50 p-3 font-semibold text-red-700">{error}</div> : null}
@@ -113,7 +86,7 @@ export function SessionsPage({
           <div className="lab-surface rounded-lg p-5">
             <div className="mb-4 flex items-center gap-3">
               <CalendarPlus className="text-teal-700" />
-              <h2 className="text-xl font-black text-slate-900">Nueva sesion</h2>
+              <h2 className="text-xl font-black text-slate-900">Nueva sesión</h2>
             </div>
             <label className="grid gap-2 text-sm font-bold text-slate-600">
               Nombre
@@ -163,7 +136,7 @@ export function SessionsPage({
                   </div>
                 </div>
               ))}
-              {!sessions.length ? <p className="rounded-lg bg-slate-50 p-4 font-semibold text-slate-500">Aun no hay sesiones.</p> : null}
+              {!sessions.length ? <p className="rounded-lg bg-slate-50 p-4 font-semibold text-slate-500">Aún no hay sesiones.</p> : null}
             </div>
           </div>
         </div>

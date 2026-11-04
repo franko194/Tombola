@@ -29,16 +29,16 @@ export function UseCasesPage({ session }: { session: Session }) {
   async function update(item: UseCase) {
     const warning = await resetWarning(session.id, "assignments");
     if (warning && !confirm(warning)) return;
-    const nextTitle = prompt("Titulo", item.title);
+    const nextTitle = prompt("Título", item.title);
     if (!nextTitle) return;
-    const nextDescription = prompt("Descripcion", item.description ?? "") ?? "";
+    const nextDescription = prompt("Descripción", item.description ?? "") ?? "";
     await resources.useCases.update(item.id, { title: nextTitle, description: nextDescription });
     await load();
   }
 
   async function remove(id: number) {
     const warning = await resetWarning(session.id, "assignments");
-    if (!confirm(warning ?? "Eliminar caso de uso?")) return;
+    if (!confirm(warning ?? "¿Eliminar caso de uso?")) return;
     await resources.useCases.remove(id);
     await load();
   }
@@ -47,10 +47,10 @@ export function UseCasesPage({ session }: { session: Session }) {
     <section className="grid gap-5">
       <div className="lab-surface rounded-lg p-5">
         <h2 className="text-2xl font-black text-slate-950">Casos de uso</h2>
-        <p className="mt-1 font-medium text-slate-600">Cada sesion parte con casos nuevos y no reutiliza sorteos anteriores.</p>
+        <p className="mt-1 font-medium text-slate-600">Cada sesión parte con casos nuevos y no reutiliza sorteos anteriores.</p>
         <div className="mt-5 grid gap-3 md:grid-cols-[1fr_1fr_auto]">
-          <input className="input" placeholder="Titulo del caso" value={title} onChange={(event) => setTitle(event.target.value)} />
-          <input className="input" placeholder="Descripcion breve" value={description} onChange={(event) => setDescription(event.target.value)} />
+          <input className="input" placeholder="Título del caso" value={title} onChange={(event) => setTitle(event.target.value)} />
+          <input className="input" placeholder="Descripción breve" value={description} onChange={(event) => setDescription(event.target.value)} />
           <button className="btn-primary" disabled={!title.trim()} onClick={add}>
             <Plus size={18} />
             Agregar

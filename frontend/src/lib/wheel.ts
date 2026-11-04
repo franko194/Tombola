@@ -82,7 +82,7 @@ export function getTombolaReadiness({ teamCount, useCaseCount }: { teamCount: nu
   if (useCaseCount < teamCount) {
     return {
       ready: true,
-      message: "Listo para sortear. Hay menos casos que equipos, algunos casos se repetiran.",
+      message: "Listo para sortear. Hay menos casos que equipos, algunos casos se repetirán.",
     };
   }
 

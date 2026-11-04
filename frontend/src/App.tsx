@@ -11,6 +11,7 @@ import { OrganizersPage } from "./pages/OrganizersPage";
 import { ParticipantsPage } from "./pages/ParticipantsPage";
 import { ResultsPage } from "./pages/ResultsPage";
 import { SessionsPage } from "./pages/SessionsPage";
+import { TopBar, type AppView } from "./components/TopBar";
 import { TeamsPage } from "./pages/TeamsPage";
 import { TombolaPage } from "./pages/TombolaPage";
 import { UseCasesPage } from "./pages/UseCasesPage";
@@ -55,8 +56,7 @@ export default function App() {
   const [session, setSession] = useState<Session | null>(null);
   const [page, setPage] = useState<PageKey>("dashboard");
   const [authState, setAuthState] = useState<"checking" | "in" | "out">("checking");
-  const [clientsOpen, setClientsOpen] = useState(false);
-  const [organizersOpen, setOrganizersOpen] = useState(false);
+  const [view, setView] = useState<AppView>("sessions");
   const [me, setMe] = useState<{ email: string; is_admin: boolean } | null>(null);
 
   useEffect(() => {
@@ -84,6 +84,7 @@ export default function App() {
   function selectSession(next: Session) {
     setSession(next);
     setPage("dashboard");
+    setView("sessions");
     saveSession(next);
   }
 
@@ -96,8 +97,7 @@ export default function App() {
   function logout() {
     void resources.auth.logout().finally(() => {
       returnToSessions();
-      setClientsOpen(false);
-      setOrganizersOpen(false);
+      setView("sessions");
       setMe(null);
       setAuthState("out");
     });
@@ -118,34 +118,48 @@ export default function App() {
     );
   }
 
-  if (!session) {
-    if (clientsOpen) {
-      return <ClientsPage onBack={() => setClientsOpen(false)} />;
-    }
-    if (organizersOpen && me?.is_admin) {
-      return <OrganizersPage currentEmail={me.email} onBack={() => setOrganizersOpen(false)} />;
-    }
-    return (
-      <SessionsPage
-        onSelect={selectSession}
-        onOpenClients={() => setClientsOpen(true)}
-        onOpenOrganizers={() => setOrganizersOpen(true)}
-        isAdmin={Boolean(me?.is_admin)}
-        onLogout={logout}
-      />
+  // Only admins can open the organizers screen, even if the view state says so.
+  const activeView: AppView = view === "organizers" && !me?.is_admin ? "sessions" : view;
+
+  let content: React.ReactNode;
+  if (activeView === "clients") {
+    content = <ClientsPage />;
+  } else if (activeView === "organizers" && me) {
+    content = <OrganizersPage currentEmail={me.email} />;
+  } else if (!session) {
+    content = <SessionsPage onSelect={selectSession} />;
+  } else {
+    content = (
+      <Layout session={session} page={page} onPageChange={setPage} onBackToSessions={returnToSessions}>
+        {page === "dashboard" && <DashboardPage session={session} onPageChange={setPage} />}
+        {page === "participants" && <ParticipantsPage session={session} />}
+        {page === "usecases" && <UseCasesPage session={session} />}
+        {page === "teams" && <TeamsPage session={session} />}
+        {page === "tombola" && <TombolaPage session={session} onPageChange={setPage} />}
+        {page === "evaluation" && <EvaluationPage session={session} />}
+        {page === "results" && <ResultsPage session={session} onSessionUpdate={selectSession} onReturnHome={returnToSessions} />}
+        {page === "history" && <HistoryPage session={session} />}
+      </Layout>
     );
   }
 
   return (
-    <Layout session={session} page={page} onPageChange={setPage} onBackToSessions={returnToSessions} onLogout={logout}>
-      {page === "dashboard" && <DashboardPage session={session} onPageChange={setPage} />}
-      {page === "participants" && <ParticipantsPage session={session} />}
-      {page === "usecases" && <UseCasesPage session={session} />}
-      {page === "teams" && <TeamsPage session={session} />}
-      {page === "tombola" && <TombolaPage session={session} onPageChange={setPage} />}
-      {page === "evaluation" && <EvaluationPage session={session} />}
-      {page === "results" && <ResultsPage session={session} onSessionUpdate={selectSession} onReturnHome={returnToSessions} />}
-      {page === "history" && <HistoryPage session={session} />}
-    </Layout>
+    <>
+      <TopBar
+        email={me?.email ?? ""}
+        isAdmin={Boolean(me?.is_admin)}
+        view={activeView}
+        openSessionName={session?.name ?? null}
+        onOpenSessions={() => {
+          returnToSessions();
+          setView("sessions");
+        }}
+        onResumeSession={() => setView("sessions")}
+        onOpenClients={() => setView("clients")}
+        onOpenOrganizers={() => setView("organizers")}
+        onLogout={logout}
+      />
+      {content}
+    </>
   );
 }

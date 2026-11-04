@@ -24,7 +24,7 @@ class LoginRequest(BaseModel):
 def login(payload: LoginRequest, response: Response, db: Session = Depends(get_db)) -> dict[str, str]:
     organizer = authenticate_organizer(db, payload.email, payload.password)
     if organizer is None:
-        raise HTTPException(status_code=401, detail="Correo o contrasena incorrectos")
+        raise HTTPException(status_code=401, detail="Correo o contraseña incorrectos")
     response.set_cookie(
         COOKIE_NAME,
         create_session_token(organizer.email),

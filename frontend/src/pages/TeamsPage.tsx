@@ -5,7 +5,7 @@ import type { Session, Team, TeamInsights, TeamsResponse } from "../types";
 
 function sourceLabel(source: string) {
   if (source === "cloud") return "IA Cloud";
-  if (source === "local") return "analisis local";
+  if (source === "local") return "análisis local";
   return source;
 }
 
@@ -53,7 +53,7 @@ export function TeamsPage({ session }: { session: Session }) {
       const hasTeams = Boolean(data?.teams.length);
       if (hasTeams || teamsDirty) {
         const confirmed = window.confirm(
-          "Regenerar equipos reemplazara la distribucion actual y limpiara las asignaciones de casos. Quieres continuar?",
+          "Regenerar equipos reemplazará la distribución actual y limpiará las asignaciones de casos. ¿Quieres continuar?",
         );
         if (!confirmed) return;
       }
@@ -154,11 +154,11 @@ export function TeamsPage({ session }: { session: Session }) {
   return (
     <section className="grid gap-5">
       <div className="lab-surface rounded-lg p-5">
-        <h2 className="text-2xl font-black text-slate-950">Generacion de equipos</h2>
+        <h2 className="text-2xl font-black text-slate-950">Generación de equipos</h2>
         <p className="mt-1 font-medium text-slate-600">Snake Draft balancea la experiencia para evitar concentrar expertos o principiantes.</p>
         <div className="mt-5 flex flex-col gap-3 md:flex-row md:items-end">
           <label className="grid gap-2 text-sm font-bold text-slate-600">
-            Numero de equipos
+            Número de equipos
             <input className="input w-48" type="number" min={1} value={numberOfTeams} onChange={(event) => setNumberOfTeams(Number(event.target.value))} />
           </label>
           <button className="btn-primary" onClick={generate}>
@@ -173,11 +173,11 @@ export function TeamsPage({ session }: { session: Session }) {
         <>
           <div className="grid gap-4 md:grid-cols-3">
             <div className="lab-surface rounded-lg p-4">
-              <p className="text-sm font-bold text-slate-500">Promedio mas alto</p>
+              <p className="text-sm font-bold text-slate-500">Promedio más alto</p>
               <p className="text-3xl font-black text-slate-950">{data.balance.highest_average}</p>
             </div>
             <div className="lab-surface rounded-lg p-4">
-              <p className="text-sm font-bold text-slate-500">Promedio mas bajo</p>
+              <p className="text-sm font-bold text-slate-500">Promedio más bajo</p>
               <p className="text-3xl font-black text-slate-950">{data.balance.lowest_average}</p>
             </div>
             <div className="lab-surface rounded-lg p-4">
@@ -188,12 +188,12 @@ export function TeamsPage({ session }: { session: Session }) {
           <div className="lab-surface rounded-lg p-5">
             <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
               <div>
-                <h3 className="text-xl font-black text-slate-950">Explicacion inteligente de balance</h3>
-                <p className="mt-1 font-medium text-slate-600">Genera una lectura ejecutiva para explicar por que los equipos quedaron equilibrados.</p>
+                <h3 className="text-xl font-black text-slate-950">Explicación inteligente de balance</h3>
+                <p className="mt-1 font-medium text-slate-600">Genera una lectura ejecutiva para explicar por qué los equipos quedaron equilibrados.</p>
               </div>
               <button className="btn-secondary" onClick={() => void generateInsights()} disabled={loadingInsights || !data.teams.length}>
                 <Sparkles size={18} />
-                {loadingInsights ? "Generando..." : "Generar explicacion"}
+                {loadingInsights ? "Generando..." : "Generar explicación"}
               </button>
             </div>
             {insights ? (
@@ -266,7 +266,7 @@ export function TeamsPage({ session }: { session: Session }) {
           </div>
           <div className="lab-surface flex flex-col gap-3 rounded-lg p-4 md:flex-row md:items-center md:justify-between">
             <p className="font-semibold text-slate-600">
-              {teamsDirty ? "Hay cambios manuales sin guardar. Al guardar se limpiaran las asignaciones de casos actuales." : "Puedes mover participantes entre equipos y guardar la distribucion manual."}
+              {teamsDirty ? "Hay cambios manuales sin guardar. Al guardar se limpiarán las asignaciones de casos actuales." : "Puedes mover participantes entre equipos y guardar la distribución manual."}
             </p>
             <button className="btn-primary" onClick={() => void saveManualTeams()} disabled={!teamsDirty || savingTeams}>
               <Save size={18} />

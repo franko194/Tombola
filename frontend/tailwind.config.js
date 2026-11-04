@@ -1,6 +1,8 @@
 /** @type {import('tailwindcss').Config} */
 export default {
   content: ["./index.html", "./src/**/*.{ts,tsx}"],
+  // On touch screens a tapped element keeps its hover style until another one is tapped. Apply hover only where it exists.
+  future: { hoverOnlyWhenSupported: true },
   theme: {
     extend: {
       fontFamily: {

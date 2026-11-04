@@ -7,8 +7,8 @@ const tabs: Array<{ key: PageKey; label: string; icon: React.ComponentType<{ siz
   { key: "participants", label: "Participantes", icon: Users },
   { key: "usecases", label: "Casos", icon: ClipboardList },
   { key: "teams", label: "Equipos", icon: BarChart3 },
-  { key: "tombola", label: "Tombola", icon: Play },
-  { key: "evaluation", label: "Evaluacion", icon: ClipboardCheck },
+  { key: "tombola", label: "Tómbola", icon: Play },
+  { key: "evaluation", label: "Evaluación", icon: ClipboardCheck },
   { key: "results", label: "Resultados", icon: Presentation },
   { key: "history", label: "Historial", icon: History },
 ];
@@ -18,13 +18,12 @@ type Props = {
   page: PageKey;
   onPageChange: (page: PageKey) => void;
   onBackToSessions: () => void;
-  onLogout: () => void;
   children: React.ReactNode;
 };
 
-export function Layout({ session, page, onPageChange, onBackToSessions, onLogout, children }: Props) {
+export function Layout({ session, page, onPageChange, onBackToSessions, children }: Props) {
   return (
-    <div className="min-h-screen bg-[#eef3f8]">
+    <div className="min-h-[calc(100vh-57px)] bg-[#eef3f8]">
       <header className="border-b border-slate-200 bg-white/90 backdrop-blur">
         <div className="mx-auto flex max-w-7xl flex-col gap-4 px-4 py-4 md:flex-row md:items-center md:justify-between">
           <div>
@@ -37,10 +36,7 @@ export function Layout({ session, page, onPageChange, onBackToSessions, onLogout
           </div>
           <div className="flex gap-2">
             <button className="btn-secondary" onClick={onBackToSessions}>
-              Cambiar sesion
-            </button>
-            <button className="btn-secondary" onClick={onLogout}>
-              Salir
+              Cambiar sesión
             </button>
           </div>
         </div>

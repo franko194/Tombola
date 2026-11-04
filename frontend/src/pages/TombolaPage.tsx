@@ -131,11 +131,11 @@ export function TombolaPage({ session, onPageChange }: { session: Session; onPag
   return (
     <section className="grid gap-5">
       <div className="lab-surface wheel-hero rounded-lg p-6">
-        <p className="text-xs font-black uppercase tracking-[0.18em] text-teal-700">Tombola visual</p>
+        <p className="text-xs font-black uppercase tracking-[0.18em] text-teal-700">Tómbola visual</p>
         <div className="mt-3 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
           <div>
             <h2 className="text-3xl font-black text-slate-950">Sorteo de casos</h2>
-            <p className="mt-2 max-w-2xl font-medium text-slate-600">Gira la ruleta para revelar un caso unico por equipo.</p>
+            <p className="mt-2 max-w-2xl font-medium text-slate-600">Gira la ruleta para revelar un caso único por equipo.</p>
           </div>
           <button className="btn-secondary" onClick={() => onPageChange("results")}>
             <PartyPopper size={18} />
@@ -194,10 +194,10 @@ export function TombolaPage({ session, onPageChange }: { session: Session; onPag
           </p>
           <h3>
             {wheelSpinning
-              ? "El caso se esta decidiendo..."
+              ? "El caso se está decidiendo..."
               : activeAssignment
                 ? `Caso asignado: ${activeAssignment.use_case_title}`
-                : "La ruleta esta lista"}
+                : "La ruleta está lista"}
           </h3>
           <p className="muted">
             {wheelSpinning
@@ -218,7 +218,7 @@ export function TombolaPage({ session, onPageChange }: { session: Session; onPag
             {assignment.use_case_description ? <p className="mt-2 font-medium text-slate-600">{assignment.use_case_description}</p> : null}
           </div>
         ))}
-        {!revealedAssignments.length ? <div className="lab-surface rounded-lg p-6 font-bold text-slate-500">Los resultados apareceran aqui despues de cada giro.</div> : null}
+        {!revealedAssignments.length ? <div className="lab-surface rounded-lg p-6 font-bold text-slate-500">Los resultados aparecerán aquí después de cada giro.</div> : null}
       </div>
     </section>
   );

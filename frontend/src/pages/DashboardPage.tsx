@@ -43,7 +43,7 @@ export function DashboardPage({ session, onPageChange }: { session: Session; onP
           ? { label: "Generar equipos", page: "teams" as PageKey }
           : session.status === "cases_assigned"
             ? { label: "Ver resultados", page: "results" as PageKey }
-            : { label: "Iniciar tombola", page: "tombola" as PageKey };
+            : { label: "Iniciar tómbola", page: "tombola" as PageKey };
 
   return (
     <section className="grid gap-5">
@@ -51,9 +51,9 @@ export function DashboardPage({ session, onPageChange }: { session: Session; onP
         <p className="text-xs font-black uppercase tracking-[0.18em] text-teal-700">Panel del organizador</p>
         <div className="mt-3 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
           <div>
-            <h2 className="text-3xl font-black text-slate-950">Preparacion de la sesion</h2>
+            <h2 className="text-3xl font-black text-slate-950">Preparación de la sesión</h2>
             <p className="mt-2 max-w-2xl font-medium text-slate-600">
-              Sigue el flujo de izquierda a derecha: participantes, casos, equipos, tombola y resultados.
+              Sigue el flujo de izquierda a derecha: participantes, casos, equipos, tómbola y resultados.
             </p>
           </div>
           <button className="btn-primary" onClick={() => onPageChange(next.page)}>
@@ -77,7 +77,7 @@ export function DashboardPage({ session, onPageChange }: { session: Session; onP
               <h3 className="text-xl font-black text-slate-950">Ingreso de jurados</h3>
             </div>
             <p className="mt-2 max-w-2xl font-medium text-slate-600">
-              Comparte este QR desde el inicio. Los jurados pueden registrarse antes de abrir la votacion y quedaran asociados a esta fecha.
+              Comparte este QR desde el inicio. Los jurados pueden registrarse antes de abrir la votación y quedarán asociados a esta fecha.
             </p>
             {judgeUrl ? (
               <div className="mt-3 rounded-lg bg-slate-50 p-3">
@@ -100,7 +100,7 @@ export function DashboardPage({ session, onPageChange }: { session: Session; onP
                 Abrir link
               </a>
               <button className="btn-primary" onClick={() => onPageChange("evaluation")}>
-                Ir a evaluacion
+                Ir a evaluación
               </button>
             </div>
           </div>

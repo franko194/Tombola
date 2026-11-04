@@ -41,7 +41,7 @@ export function LoginPage({ onLogin }: { onLogin: () => void }) {
             />
           </label>
           <label className="grid gap-2 text-sm font-bold text-slate-600">
-            Contrasena
+            Contraseña
             <input
               className="input"
               type="password"

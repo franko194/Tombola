@@ -1,3 +1,5 @@
+import { translateApiError } from "./errors";
+
 function resolveApiBase() {
   const configuredUrl = import.meta.env.VITE_API_URL;
   if (!configuredUrl) return "/api";
@@ -33,11 +35,16 @@ export async function api<T>(path: string, options: RequestOptions = {}): Promis
     body = JSON.stringify(options.json);
   }
 
-  const response = await fetch(`${API_BASE}${path}`, {
-    ...options,
-    headers,
-    body,
-  });
+  let response: Response;
+  try {
+    response = await fetch(`${API_BASE}${path}`, {
+      ...options,
+      headers,
+      body,
+    });
+  } catch {
+    throw new Error("No se pudo conectar con el servidor. Revisa tu conexión e inténtalo de nuevo.");
+  }
 
   if (!response.ok) {
     // An expired organizer cookie sends the app back to the login screen. Login attempts are excluded.
@@ -45,7 +52,7 @@ export async function api<T>(path: string, options: RequestOptions = {}): Promis
       window.dispatchEvent(new Event("auth:expired"));
     }
     const error = await response.json().catch(() => ({ detail: "Error inesperado" }));
-    throw new Error(error.detail ?? "Error inesperado");
+    throw new Error(translateApiError(error.detail));
   }
 
   if (response.status === 204) {

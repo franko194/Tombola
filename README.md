@@ -95,6 +95,8 @@ npm run dev
 
 Abre `http://127.0.0.1:5173`.
 
+`npm run dev` escucha en toda la red local, así que puedes probar el QR de jurados desde un celular conectado a la misma red Wi-Fi: la pantalla de evaluación muestra el enlace con la IP de tu PC. Si Windows pregunta por el firewall, permite Node.js en redes privadas.
+
 Tambien puedes lanzar ambos desde la raiz con `npm run backend` y `npm run frontend` (el backend debe tener el entorno virtual activo).
 
 ## Variables de entorno

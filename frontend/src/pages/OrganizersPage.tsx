@@ -1,11 +1,11 @@
-import { ArrowLeft, KeyRound, ShieldCheck, UserPlus } from "lucide-react";
+import { KeyRound, ShieldCheck, UserPlus } from "lucide-react";
 import { useEffect, useState, type FormEvent } from "react";
 import { resources } from "../api/resources";
 import type { Organizer } from "../types";
 
 const MIN_PASSWORD_LENGTH = 8;
 
-export function OrganizersPage({ currentEmail, onBack }: { currentEmail: string; onBack: () => void }) {
+export function OrganizersPage({ currentEmail }: { currentEmail: string }) {
   const [organizers, setOrganizers] = useState<Organizer[]>([]);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -39,7 +39,7 @@ export function OrganizersPage({ currentEmail, onBack }: { currentEmail: string;
     setNotice("");
     try {
       const created = await resources.organizers.create({ email, password, is_admin: makeAdmin });
-      setNotice(`Listo: ${created.email} ya puede iniciar sesion. Comparte la contrasena por un canal privado.`);
+      setNotice(`Listo: ${created.email} ya puede iniciar sesión. Comparte la contraseña por un canal privado.`);
       setEmail("");
       setPassword("");
       setMakeAdmin(false);
@@ -72,7 +72,7 @@ export function OrganizersPage({ currentEmail, onBack }: { currentEmail: string;
 
   async function savePassword(event: FormEvent<HTMLFormElement>, organizer: Organizer) {
     event.preventDefault();
-    const saved = await update(organizer, { password: newPassword }, `Contrasena cambiada para ${organizer.email}.`);
+    const saved = await update(organizer, { password: newPassword }, `Contraseña cambiada para ${organizer.email}.`);
     if (saved) {
       setPasswordFor(null);
       setNewPassword("");
@@ -82,7 +82,7 @@ export function OrganizersPage({ currentEmail, onBack }: { currentEmail: string;
   function toggleActive(organizer: Organizer) {
     const next = !organizer.active;
     const message = next ? `${organizer.email} reactivado.` : `${organizer.email} desactivado.`;
-    if (!next && !confirm(`Desactivar el acceso de ${organizer.email}?`)) return;
+    if (!next && !confirm(`¿Desactivar el acceso de ${organizer.email}?`)) return;
     void update(organizer, { active: next }, message);
   }
 
@@ -93,17 +93,13 @@ export function OrganizersPage({ currentEmail, onBack }: { currentEmail: string;
   }
 
   return (
-    <main className="min-h-screen bg-[#eef3f8] px-4 py-8">
+    <main className="min-h-[calc(100vh-57px)] bg-[#eef3f8] px-4 py-8">
       <section className="mx-auto grid max-w-4xl gap-5">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <p className="text-xs font-black uppercase tracking-[0.2em] text-teal-700">Administracion</p>
+            <p className="text-xs font-black uppercase tracking-[0.2em] text-teal-700">Administración</p>
             <h1 className="mt-1 text-3xl font-black text-slate-950">Organizadores</h1>
           </div>
-          <button className="btn-secondary" onClick={onBack}>
-            <ArrowLeft size={18} />
-            Volver
-          </button>
         </div>
 
         {error ? <div className="rounded-lg bg-red-50 p-3 font-semibold text-red-700">{error}</div> : null}
@@ -120,7 +116,7 @@ export function OrganizersPage({ currentEmail, onBack }: { currentEmail: string;
               <input className="input" type="email" required value={email} onChange={(event) => setEmail(event.target.value)} />
             </label>
             <label className="grid gap-2 text-sm font-bold text-slate-600">
-              Contrasena inicial
+              Contraseña inicial
               <input
                 className="input"
                 type="password"
@@ -155,13 +151,13 @@ export function OrganizersPage({ currentEmail, onBack }: { currentEmail: string;
                       {organizer.active ? "Activo" : "Desactivado"}
                     </span>
                     {organizer.is_admin ? <span className="text-teal-700">Administrador</span> : null}
-                    {!organizer.has_password ? <span className="text-amber-700">Sin contrasena</span> : null}
+                    {!organizer.has_password ? <span className="text-amber-700">Sin contraseña</span> : null}
                   </div>
                 </div>
                 <div className="flex flex-wrap gap-2">
                   <button className="btn-secondary" onClick={() => openPasswordForm(organizer)}>
                     <KeyRound size={16} />
-                    Contrasena
+                    Contraseña
                   </button>
                   <button className="btn-secondary" disabled={isMe} onClick={() => toggleAdmin(organizer)} title={isMe ? "No puedes cambiar tu propio rol" : ""}>
                     <ShieldCheck size={16} />
@@ -174,7 +170,7 @@ export function OrganizersPage({ currentEmail, onBack }: { currentEmail: string;
                 {passwordFor === organizer.id ? (
                   <form className="flex flex-wrap items-end gap-2 md:col-span-2" onSubmit={(event) => void savePassword(event, organizer)}>
                     <label className="grid flex-1 gap-1 text-sm font-bold text-slate-600">
-                      Nueva contrasena (minimo {MIN_PASSWORD_LENGTH} caracteres)
+                      Nueva contraseña (mínimo {MIN_PASSWORD_LENGTH} caracteres)
                       <input
                         className="input"
                         type="password"

@@ -43,22 +43,27 @@ def init_db() -> None:
 
     Base.metadata.create_all(bind=engine)
     migrate_assignments_allow_repeated_use_cases()
-    migrate_organizers_columns()
+    migrate_added_columns()
     seed_organizers_from_env()
     _db_initialized = True
 
 
-def migrate_organizers_columns() -> None:
-    # create_all does not add columns to tables that already exist, so older organizers tables need these.
-    columns = {column["name"] for column in inspect(engine).get_columns("organizers")}
-    missing = {
-        "password_hash": "ALTER TABLE organizers ADD COLUMN password_hash VARCHAR",
-        "is_admin": "ALTER TABLE organizers ADD COLUMN is_admin BOOLEAN NOT NULL DEFAULT FALSE",
-    }
+def add_missing_columns(table: str, columns: dict[str, str]) -> None:
+    # create_all does not add columns to tables that already exist, so databases created by an older
+    # version of the app (local SQLite, Neon) get the columns added here.
+    existing = {column["name"] for column in inspect(engine).get_columns(table)}
     with engine.begin() as connection:
-        for name, statement in missing.items():
-            if name not in columns:
-                connection.execute(text(statement))
+        for name, definition in columns.items():
+            if name not in existing:
+                connection.execute(text(f"ALTER TABLE {table} ADD COLUMN {name} {definition}"))
+
+
+def migrate_added_columns() -> None:
+    add_missing_columns(
+        "organizers",
+        {"password_hash": "VARCHAR", "is_admin": "BOOLEAN NOT NULL DEFAULT FALSE"},
+    )
+    add_missing_columns("draw_history", {"note": "VARCHAR"})
 
 
 def seed_organizers_from_env() -> None:

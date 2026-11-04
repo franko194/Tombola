@@ -29,6 +29,22 @@ Tambien puedes revisar la tabla en la consola de Neon:
 SELECT email, active, password_hash IS NOT NULL AS tiene_contrasena FROM organizers ORDER BY email;
 ```
 
+## Administrar organizadores desde la web
+
+Los administradores no necesitan la consola. En el menú (☰) de la esquina superior izquierda, **Organizadores** abre la pantalla de administración, que solo ven los administradores. Desde ahí pueden:
+
+- Crear un organizador con su correo y una contraseña inicial de al menos 8 caracteres, y darle el rol de administrador si hace falta. La contraseña inicial se comparte por un canal privado.
+- Cambiar la contraseña de otra persona, por ejemplo si la olvidó.
+- Dar o quitar el rol de administrador, y activar o desactivar cuentas.
+
+Un administrador no puede desactivarse ni quitarse el rol a sí mismo, así que siempre queda al menos uno. Cualquier administrador puede gestionar a los demás.
+
+El primer administrador se crea una sola vez con el comando de arriba y la opción `--admin`:
+
+```bash
+python -m app.set_organizer_password correo@ejemplo.com --admin
+```
+
 ## Quitar o restaurar el acceso
 
 El acceso se revisa en cada peticion, asi que el cambio surte efecto de inmediato:
@@ -63,9 +79,18 @@ Cada vez que reemplazas equipos o casos ya sorteados, la app guarda una copia en
 - Si un jurado vuelve a identificarse con el mismo nombre desde otro dispositivo, el token anterior deja de funcionar. El jurado puede usar el boton "No soy [nombre]" para cambiar de identidad en el mismo navegador.
 - El QR debe apuntar a la URL de produccion. Si aparece la advertencia de `localhost`, configura `VITE_PUBLIC_APP_URL` o abre la app desde el dominio de Vercel.
 
+Como vota un jurado desde el celular:
+
+1. Escanea el QR y escribe su nombre.
+2. Elige un equipo (cada uno muestra su caso) y toca un numero del 1 al 5 en cada criterio. Cada nota muestra su etiqueta: 1 Muy mal, 2 Insuficiente, 3 Aceptable, 4 Bueno, 5 Muy bueno.
+3. Puede dejar un comentario opcional y pulsa **Guardar voto**. La pantalla avanza sola al siguiente equipo sin votar y muestra "X de N votados".
+4. Mientras la votacion siga abierta puede volver a un equipo y pulsar **Actualizar voto**.
+
+Otros detalles: si el jurado se registra antes de que abras la votacion, su pantalla se actualiza sola al abrirla o cerrarla. Lo que puntua y no guarda se conserva al cambiar de equipo o recargar la pagina. Los comentarios se guardan en la tabla `team_scores` (columna `comment`), una vez por criterio, y el reporte los cuenta una sola vez por jurado y equipo.
+
 ## Calendario de clientes
 
-Desde la pantalla de sesiones, **Calendario de clientes** muestra las visitas del mes. Cada visita tiene empresa, contacto, notas y fecha. Los viernes aparecen marcados como IA Friday.
+En el menú (☰), **Calendario de clientes** muestra las visitas del mes. Cada visita tiene empresa, contacto, notas y fecha. Los viernes aparecen marcados como IA Friday.
 
 Este calendario es independiente de las sesiones: las visitas de clientes no aparecen en el historial de sorteos ni en los equipos.
 
@@ -89,7 +114,7 @@ Las entradas se consultan en la API con `GET /sessions/{id}/draw-history`.
 | Sintoma | Causa probable | Que hacer |
 | --- | --- |
 | Vuelve a aparecer la pantalla de inicio | La sesion expiro (12 horas) o la cuenta fue desactivada | Vuelve a iniciar sesion. Si no entra, revisa `active` en `organizers`. |
-| "Correo o contrasena incorrectos" | Contrasena mal escrita o organizador sin contrasena | Ejecuta `python -m app.set_organizer_password correo` para fijarla. |
+| "Correo o contraseña incorrectos" | Contraseña mal escrita o organizador sin contraseña | Un administrador puede cambiarla desde **Organizadores**, o ejecuta `python -m app.set_organizer_password correo`. |
 | Error 503 al iniciar sesion | Falta `SESSION_SECRET` en el entorno | Configurala en Vercel y redespliega. |
 | `/api/health/db` responde SQLite | Falta `DATABASE_URL` en Vercel | Configurala y redespliega. |
 | Los datos desaparecen al redesplegar | La app esta usando SQLite temporal | Configura `DATABASE_URL` con Neon. |

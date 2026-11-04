@@ -4,7 +4,7 @@ import { resources } from "../api/resources";
 import { resetWarning } from "../lib/drawGuard";
 import type { Participant, Session } from "../types";
 
-const levelLabels = ["Sin experiencia", "Principiante", "Basico", "Intermedio", "Avanzado", "Experto"];
+const levelLabels = ["Sin experiencia", "Principiante", "Básico", "Intermedio", "Avanzado", "Experto"];
 
 export function ParticipantsPage({ session }: { session: Session }) {
   const [participants, setParticipants] = useState<Participant[]>([]);
@@ -34,7 +34,7 @@ export function ParticipantsPage({ session }: { session: Session }) {
 
   async function remove(id: number) {
     const warning = await resetWarning(session.id, "teams");
-    if (!confirm(warning ?? "Eliminar participante?")) return;
+    if (!confirm(warning ?? "¿Eliminar participante?")) return;
     await resources.participants.remove(id);
     await load();
   }

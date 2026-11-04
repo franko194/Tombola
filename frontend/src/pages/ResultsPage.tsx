@@ -28,13 +28,13 @@ export function ResultsPage({
   async function complete() {
     const participantsCount = results?.teams.flatMap((team) => team.members).length ?? 0;
     const message = [
-      "Completar sesion?",
+      "¿Completar sesión?",
       "",
       `Equipos: ${results?.teams.length ?? 0}`,
       `Participantes: ${participantsCount}`,
       `Casos asignados: ${results?.assignments.length ?? 0}`,
       "",
-      "Se guardara un snapshot historico de estos resultados.",
+      "Se guardará un snapshot histórico de estos resultados.",
     ].join("\n");
     if (!confirm(message)) return;
     await resources.sessions.complete(session.id);
@@ -83,7 +83,7 @@ export function ResultsPage({
         <div className="lab-surface rounded-lg p-6">
           <p className="text-xs font-black uppercase tracking-[0.18em] text-teal-700">Vista para pantalla</p>
           <h2 className="mt-2 text-3xl font-black text-slate-950">Resultados IA Friday</h2>
-          <p className="mt-2 font-semibold text-slate-600">Esta sesion no tiene equipos, participantes o casos guardados para mostrar.</p>
+          <p className="mt-2 font-semibold text-slate-600">Esta sesión no tiene equipos, participantes o casos guardados para mostrar.</p>
         </div>
       </section>
     );
@@ -152,7 +152,7 @@ export function ResultsPage({
               <h3 className="text-2xl font-black text-slate-950">Reporte final generado por IA</h3>
             </div>
             <p className="mt-2 max-w-3xl font-semibold text-slate-600">
-              Consolida ranking, equipos, casos asignados, feedback de jurados, conclusion ejecutiva y aprendizajes del workshop.
+              Consolida ranking, equipos, casos asignados, feedback de jurados, conclusión ejecutiva y aprendizajes del workshop.
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -172,7 +172,7 @@ export function ResultsPage({
         {report ? (
           <div className="mt-5 grid gap-5">
             <div className="rounded-lg bg-teal-50 p-4">
-              <p className="text-xs font-black uppercase tracking-[0.12em] text-teal-700">Fuente: {report.generated_by === "cloud" ? "IA Cloud" : "analisis local"}</p>
+              <p className="text-xs font-black uppercase tracking-[0.12em] text-teal-700">Fuente: {report.generated_by === "cloud" ? "IA Cloud" : "análisis local"}</p>
               <p className="mt-2 font-bold leading-7 text-teal-950">{report.executive_summary}</p>
             </div>
 
