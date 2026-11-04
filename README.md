@@ -35,7 +35,8 @@ Tombola/
 │   ├── tests/        Pruebas de API y reglas de negocio (pytest)
 │   ├── requirements.txt       Dependencias de ejecucion
 │   ├── requirements-dev.txt   Dependencias de desarrollo (pytest, ruff)
-│   └── pyproject.toml         Configuracion de ruff y pytest
+│   ├── ruff.toml              Configuracion de lint
+│   └── pytest.ini             Configuracion de pytest
 ├── frontend/
 │   └── src/          React + TypeScript (pantallas, componentes y cliente de API)
 ├── docs/             Operacion, arquitectura y documentos de diseno
