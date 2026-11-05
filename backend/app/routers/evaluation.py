@@ -32,6 +32,7 @@ from app.schemas import (
     JudgeOut,
     JudgeScoreOut,
     PublicEvaluationOut,
+    RegistrationUpdate,
     SessionJudgeOut,
     TeamRankingOut,
     TeamScoreSubmit,
@@ -43,11 +44,11 @@ public_router = APIRouter(tags=["judges"])
 DEFAULT_PUBLIC_APP_URL = "https://tombola-rust.vercel.app"
 
 DEFAULT_CRITERIA = [
-    ("Presentation & Communication", 1.0),
-    ("Usability & Desing", 1.0),
-    ("Innovation", 1.0),
-    ("Impact and Relevance", 1.0),
-    ("Technical Quiality", 1.0),
+    ("Presentación y comunicación", 1.0),
+    ("Usabilidad y diseño", 1.0),
+    ("Innovación", 1.0),
+    ("Impacto y relevancia", 1.0),
+    ("Calidad técnica", 1.0),
 ]
 
 
@@ -187,6 +188,7 @@ def serialize_evaluation(db: Session, evaluation: SessionEvaluation, request: Re
         session=session,
         token=evaluation.token,
         status=evaluation.status,
+        registration_open=evaluation.registration_open,
         judge_url=build_judge_url(evaluation.token, request),
         criteria=serialize_criteria(db, evaluation.session_id),
         judges=serialize_session_judges(db, evaluation.session_id),
@@ -233,6 +235,8 @@ def open_evaluation(session_id: int, request: Request, db: Session = Depends(get
     evaluation = get_or_create_evaluation(db, session_id, "open")
     evaluation.status = "open"
     evaluation.closed_at = None
+    # Opening the vote fixes the list of judges; the organizer can reopen registration for late arrivals.
+    evaluation.registration_open = False
     db.commit()
     db.refresh(evaluation)
     return serialize_evaluation(db, evaluation, request)
@@ -245,6 +249,17 @@ def close_evaluation(session_id: int, request: Request, db: Session = Depends(ge
         raise HTTPException(status_code=404, detail="Evaluation not found")
     evaluation.status = "closed"
     evaluation.closed_at = utc_now()
+    db.commit()
+    db.refresh(evaluation)
+    return serialize_evaluation(db, evaluation, request)
+
+
+@router.post("/sessions/{session_id}/evaluation/registration", response_model=EvaluationOut)
+def set_judge_registration(session_id: int, payload: RegistrationUpdate, request: Request, db: Session = Depends(get_db)) -> EvaluationOut:
+    evaluation = db.query(SessionEvaluation).filter(SessionEvaluation.session_id == session_id).first()
+    if not evaluation:
+        raise HTTPException(status_code=404, detail="Evaluation not found")
+    evaluation.registration_open = payload.open
     db.commit()
     db.refresh(evaluation)
     return serialize_evaluation(db, evaluation, request)
@@ -309,6 +324,7 @@ def get_public_evaluation(token: str, db: Session = Depends(get_db)) -> PublicEv
         session=session,
         token=evaluation.token,
         status=evaluation.status,
+        registration_open=evaluation.registration_open,
         criteria=serialize_criteria(db, evaluation.session_id),
         teams=serialize_teams(db, evaluation.session_id).teams,
         assignments=serialize_assignments(db, evaluation.session_id),
@@ -327,6 +343,19 @@ def identify_judge(token: str, payload: JudgeIdentifyRequest, db: Session = Depe
 
     email = payload.email.strip().lower() if payload.email else internal_judge_email(evaluation, name)
     judge = db.query(Judge).filter(Judge.email == email).first()
+    already_registered = (
+        judge is not None
+        and db.query(SessionJudge)
+        .filter(SessionJudge.session_id == evaluation.session_id, SessionJudge.judge_id == judge.id)
+        .first()
+        is not None
+    )
+    if not already_registered and not evaluation.registration_open:
+        raise HTTPException(status_code=403, detail="Judge registration is closed")
+    # Identifying again with the same name takes over that judge and revokes the other device's token,
+    # so two different people with the same name must not do it by accident.
+    if already_registered and not payload.confirm_existing:
+        raise HTTPException(status_code=409, detail="Judge name already registered")
     if judge:
         judge.name = name
         judge.organization = payload.organization

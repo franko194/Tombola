@@ -22,6 +22,16 @@ function resolveApiBase() {
 
 const API_BASE = resolveApiBase();
 
+export class ApiError extends Error {
+  constructor(
+    message: string,
+    readonly status: number,
+  ) {
+    super(message);
+    this.name = "ApiError";
+  }
+}
+
 type RequestOptions = RequestInit & {
   json?: unknown;
 };
@@ -52,7 +62,7 @@ export async function api<T>(path: string, options: RequestOptions = {}): Promis
       window.dispatchEvent(new Event("auth:expired"));
     }
     const error = await response.json().catch(() => ({ detail: "Error inesperado" }));
-    throw new Error(translateApiError(error.detail));
+    throw new ApiError(translateApiError(error.detail), response.status);
   }
 
   if (response.status === 204) {

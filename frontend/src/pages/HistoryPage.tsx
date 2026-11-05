@@ -1,6 +1,7 @@
 import { Pencil, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { resources } from "../api/resources";
+import { useDialogs } from "../components/Dialogs";
 import type { DrawHistory, Session } from "../types";
 
 const reasonLabels: Record<string, string> = {
@@ -20,6 +21,7 @@ const reasonLabels: Record<string, string> = {
 export function HistoryPage({ session }: { session: Session }) {
   const [entries, setEntries] = useState<DrawHistory[]>([]);
   const [error, setError] = useState("");
+  const { confirm, form } = useDialogs();
 
   async function load() {
     try {
@@ -35,10 +37,13 @@ export function HistoryPage({ session }: { session: Session }) {
   }, [session.id]);
 
   async function editNote(entry: DrawHistory) {
-    const next = prompt("Nota para este registro (déjalo vacío para quitarla)", entry.note ?? "");
-    if (next === null) return;
+    const values = await form({
+      title: "Nota del registro",
+      fields: [{ name: "note", label: "Nota (déjala vacía para quitarla)", type: "textarea", value: entry.note ?? "" }],
+    });
+    if (!values) return;
     try {
-      await resources.history.updateNote(session.id, entry.id, next);
+      await resources.history.updateNote(session.id, entry.id, values.note);
       await load();
     } catch (err) {
       setError((err as Error).message);
@@ -46,7 +51,13 @@ export function HistoryPage({ session }: { session: Session }) {
   }
 
   async function remove(entry: DrawHistory) {
-    if (!confirm("¿Eliminar este registro del historial? No se puede deshacer.")) return;
+    const accepted = await confirm({
+      title: "Eliminar registro",
+      message: "¿Eliminar este registro del historial? No se puede deshacer.",
+      confirmLabel: "Eliminar",
+      danger: true,
+    });
+    if (!accepted) return;
     try {
       await resources.history.remove(session.id, entry.id);
       await load();

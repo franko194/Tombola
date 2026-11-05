@@ -151,6 +151,7 @@ def test_judge_votes_require_the_token_issued_to_that_judge():
     client.post(f"/sessions/{session_id}/teams/generate", json={"number_of_teams": 1})
     client.post(f"/sessions/{session_id}/use-cases/assign", json={"mode": "random"})
     evaluation = client.post(f"/sessions/{session_id}/evaluation/open").json()
+    client.post(f"/sessions/{session_id}/evaluation/registration", json={"open": True})
     public = client.get(f"/judge/{evaluation['token']}").json()
     first = client.post(f"/judge/{evaluation['token']}/identify", json={"name": "Ana"}).json()
     second = client.post(f"/judge/{evaluation['token']}/identify", json={"name": "Beto"}).json()

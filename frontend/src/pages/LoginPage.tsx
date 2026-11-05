@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from "react";
 import { resources } from "../api/resources";
+import { PasswordInput } from "../components/PasswordInput";
 
 export function LoginPage({ onLogin }: { onLogin: () => void }) {
   const [email, setEmail] = useState("");
@@ -42,9 +43,7 @@ export function LoginPage({ onLogin }: { onLogin: () => void }) {
           </label>
           <label className="grid gap-2 text-sm font-bold text-slate-600">
             Contraseña
-            <input
-              className="input"
-              type="password"
+            <PasswordInput
               autoComplete="current-password"
               required
               value={password}

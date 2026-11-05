@@ -44,6 +44,7 @@ def init_db() -> None:
     Base.metadata.create_all(bind=engine)
     migrate_assignments_allow_repeated_use_cases()
     migrate_added_columns()
+    migrate_criteria_names()
     seed_organizers_from_env()
     _db_initialized = True
 
@@ -64,6 +65,28 @@ def migrate_added_columns() -> None:
         {"password_hash": "VARCHAR", "is_admin": "BOOLEAN NOT NULL DEFAULT FALSE"},
     )
     add_missing_columns("draw_history", {"note": "VARCHAR"})
+    add_missing_columns("session_evaluations", {"registration_open": "BOOLEAN NOT NULL DEFAULT TRUE"})
+
+
+# Criteria were first stored with English names. Votes reference the criterion id, so renaming keeps them.
+LEGACY_CRITERIA_NAMES = {
+    "Presentation & Communication": "Presentación y comunicación",
+    "Usability & Desing": "Usabilidad y diseño",
+    "Usability & Design": "Usabilidad y diseño",
+    "Innovation": "Innovación",
+    "Impact and Relevance": "Impacto y relevancia",
+    "Technical Quality": "Calidad técnica",
+    "Technical Quiality": "Calidad técnica",
+}
+
+
+def migrate_criteria_names() -> None:
+    with engine.begin() as connection:
+        for old, new in LEGACY_CRITERIA_NAMES.items():
+            connection.execute(
+                text("UPDATE evaluation_criteria SET name = :new WHERE name = :old"),
+                {"new": new, "old": old},
+            )
 
 
 def seed_organizers_from_env() -> None:

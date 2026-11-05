@@ -76,7 +76,7 @@ Los mensajes de error no distinguen entre correo inexistente y contrasena incorr
 | `draw_history` | Copia de los sorteos reemplazados o eliminados, con nota opcional. |
 | `judges` | Jurados por nombre. |
 | `session_judges` | Jurados que participan en la evaluacion de una sesion. |
-| `session_evaluations` | Evaluacion de cada sesion, con su token publico y estado (abierta o cerrada). |
+| `session_evaluations` | Evaluacion de cada sesion, con su token publico, estado (abierta o cerrada) y si el registro de jurados sigue abierto. |
 | `evaluation_criteria` | Criterios de evaluacion de cada sesion. |
 | `team_scores` | Puntajes de cada jurado a cada equipo por criterio. |
 | `judge_vote_tokens` | Hash del token de voto de cada jurado en cada sesion. |

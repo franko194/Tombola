@@ -1,5 +1,6 @@
 import { CheckCircle2, Circle, Loader2, Send } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { ApiError } from "../api/client";
 import { resources } from "../api/resources";
 import { criterionLabel, scoreLabels } from "../lib/scoring";
 import type { Judge, JudgeScore, PublicEvaluation, Team } from "../types";
@@ -54,6 +55,7 @@ export function JudgePage({ token }: { token: string }) {
   // Unsaved edits per team, so switching teams or reloading the page does not lose them.
   const [drafts, setDrafts] = useState<Record<number, TeamDraft>>({});
   const [name, setName] = useState("");
+  const [duplicateName, setDuplicateName] = useState<string | null>(null);
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
   const [notification, setNotification] = useState<string | null>(null);
@@ -151,15 +153,21 @@ export function JudgePage({ token }: { token: string }) {
     return () => window.clearTimeout(timeout);
   }, [notification]);
 
-  async function identify(event: React.FormEvent) {
+  async function identify(event: React.SyntheticEvent, confirmExisting = false) {
     event.preventDefault();
     try {
       setError("");
-      const result = await resources.evaluation.identify(token, { name });
+      const result = await resources.evaluation.identify(token, { name, confirm_existing: confirmExisting });
       const next = { judge: result.judge, voteToken: result.vote_token };
       writeStoredIdentity(token, next);
       setIdentity(next);
+      setDuplicateName(null);
     } catch (err) {
+      // The name is already registered: it may be another person with the same name, so ask before taking it over.
+      if (err instanceof ApiError && err.status === 409) {
+        setDuplicateName(name.trim());
+        return;
+      }
       setError((err as Error).message);
     }
   }
@@ -234,6 +242,11 @@ export function JudgePage({ token }: { token: string }) {
               La votación aún no está abierta. Puedes registrarte ahora: esta pantalla se actualizará sola cuando el organizador la abra.
             </p>
           ) : null}
+          {!judge && !evaluation.registration_open && evaluation.status !== "closed" ? (
+            <p className="mt-3 rounded-lg bg-amber-50 p-3 font-bold text-amber-800">
+              El registro de jurados ya cerró. Si te registraste antes, escribe tu nombre para continuar; si no, pide al organizador que lo reabra.
+            </p>
+          ) : null}
           {evaluation.status === "closed" ? (
             <p className="mt-3 rounded-lg bg-amber-50 p-3 font-bold text-amber-800">La votación está cerrada. ¡Gracias por participar!</p>
           ) : null}
@@ -253,10 +266,29 @@ export function JudgePage({ token }: { token: string }) {
               autoFocus
               autoComplete="name"
               enterKeyHint="go"
-              onChange={(event) => setName(event.target.value)}
+              onChange={(event) => {
+                setName(event.target.value);
+                setDuplicateName(null);
+              }}
               required
             />
-            <button className="btn-primary !min-h-12 text-lg" disabled={evaluation.status === "closed"}>
+            {duplicateName ? (
+              <div role="alert" className="grid gap-3 rounded-lg bg-amber-50 p-3 text-amber-900">
+                <p className="font-bold">Ya hay un jurado llamado «{duplicateName}» en esta votación.</p>
+                <p className="text-sm font-semibold">
+                  Si eres tú (por ejemplo, cambiaste de celular), continúa. Si es otra persona, agrega tu apellido.
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  <button type="button" className="btn-primary" onClick={(event) => void identify(event, true)}>
+                    Sí, soy yo
+                  </button>
+                  <button type="button" className="btn-secondary" onClick={() => setDuplicateName(null)}>
+                    No, usaré otro nombre
+                  </button>
+                </div>
+              </div>
+            ) : null}
+            <button className="btn-primary !min-h-12 text-lg" disabled={evaluation.status === "closed" || duplicateName !== null}>
               Continuar
             </button>
           </form>
@@ -375,6 +407,11 @@ export function JudgePage({ token }: { token: string }) {
                 </label>
 
                 <div className="sticky bottom-0 -mx-5 -mb-5 grid gap-2 rounded-b-lg border-t border-slate-200 bg-white/95 p-4 backdrop-blur">
+                  {error ? (
+                    <p role="alert" className="rounded-lg bg-red-50 p-3 text-sm font-bold text-red-700">
+                      No se pudo guardar tu voto: {error}
+                    </p>
+                  ) : null}
                   {votingOpen && missingCriteria > 0 ? (
                     <p className="text-center text-sm font-bold text-amber-800">
                       {missingCriteria === 1 ? "Falta 1 criterio por calificar" : `Faltan ${missingCriteria} criterios por calificar`}

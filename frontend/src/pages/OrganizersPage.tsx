@@ -1,6 +1,8 @@
 import { KeyRound, ShieldCheck, UserPlus } from "lucide-react";
 import { useEffect, useState, type FormEvent } from "react";
 import { resources } from "../api/resources";
+import { useDialogs } from "../components/Dialogs";
+import { PasswordInput } from "../components/PasswordInput";
 import type { Organizer } from "../types";
 
 const MIN_PASSWORD_LENGTH = 8;
@@ -14,6 +16,7 @@ export function OrganizersPage({ currentEmail }: { currentEmail: string }) {
   const [notice, setNotice] = useState("");
   const [passwordFor, setPasswordFor] = useState<number | null>(null);
   const [newPassword, setNewPassword] = useState("");
+  const { confirm } = useDialogs();
 
   async function load() {
     try {
@@ -79,10 +82,18 @@ export function OrganizersPage({ currentEmail }: { currentEmail: string }) {
     }
   }
 
-  function toggleActive(organizer: Organizer) {
+  async function toggleActive(organizer: Organizer) {
     const next = !organizer.active;
     const message = next ? `${organizer.email} reactivado.` : `${organizer.email} desactivado.`;
-    if (!next && !confirm(`¿Desactivar el acceso de ${organizer.email}?`)) return;
+    const accepted =
+      next ||
+      (await confirm({
+        title: "Desactivar acceso",
+        message: `¿Desactivar el acceso de ${organizer.email}?`,
+        confirmLabel: "Desactivar",
+        danger: true,
+      }));
+    if (!accepted) return;
     void update(organizer, { active: next }, message);
   }
 
@@ -117,9 +128,7 @@ export function OrganizersPage({ currentEmail }: { currentEmail: string }) {
             </label>
             <label className="grid gap-2 text-sm font-bold text-slate-600">
               Contraseña inicial
-              <input
-                className="input"
-                type="password"
+              <PasswordInput
                 required
                 minLength={MIN_PASSWORD_LENGTH}
                 autoComplete="new-password"
@@ -163,7 +172,7 @@ export function OrganizersPage({ currentEmail }: { currentEmail: string }) {
                     <ShieldCheck size={16} />
                     {organizer.is_admin ? "Quitar admin" : "Hacer admin"}
                   </button>
-                  <button className="btn-danger" disabled={isMe} onClick={() => toggleActive(organizer)} title={isMe ? "No puedes desactivarte a ti mismo" : ""}>
+                  <button className="btn-danger" disabled={isMe} onClick={() => void toggleActive(organizer)} title={isMe ? "No puedes desactivarte a ti mismo" : ""}>
                     {organizer.active ? "Desactivar" : "Activar"}
                   </button>
                 </div>
@@ -171,9 +180,7 @@ export function OrganizersPage({ currentEmail }: { currentEmail: string }) {
                   <form className="flex flex-wrap items-end gap-2 md:col-span-2" onSubmit={(event) => void savePassword(event, organizer)}>
                     <label className="grid flex-1 gap-1 text-sm font-bold text-slate-600">
                       Nueva contraseña (mínimo {MIN_PASSWORD_LENGTH} caracteres)
-                      <input
-                        className="input"
-                        type="password"
+                      <PasswordInput
                         required
                         minLength={MIN_PASSWORD_LENGTH}
                         autoComplete="new-password"

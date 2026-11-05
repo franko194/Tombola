@@ -1,6 +1,7 @@
 import { FileUp, Pencil, Plus, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { resources } from "../api/resources";
+import { useDialogs } from "../components/Dialogs";
 import { resetWarning } from "../lib/drawGuard";
 import type { Participant, Session } from "../types";
 
@@ -11,6 +12,7 @@ export function ParticipantsPage({ session }: { session: Session }) {
   const [name, setName] = useState("");
   const [aiLevel, setAiLevel] = useState(3);
   const [error, setError] = useState("");
+  const { confirm, form } = useDialogs();
 
   async function load() {
     setParticipants(await resources.participants.list(session.id));
@@ -22,7 +24,7 @@ export function ParticipantsPage({ session }: { session: Session }) {
 
   async function add() {
     const warning = await resetWarning(session.id, "teams");
-    if (warning && !confirm(warning)) return;
+    if (warning && !(await confirm({ message: warning, confirmLabel: "Continuar", danger: true }))) return;
     try {
       await resources.participants.create(session.id, { name, ai_level: aiLevel });
       setName("");
@@ -34,25 +36,44 @@ export function ParticipantsPage({ session }: { session: Session }) {
 
   async function remove(id: number) {
     const warning = await resetWarning(session.id, "teams");
-    if (!confirm(warning ?? "¿Eliminar participante?")) return;
-    await resources.participants.remove(id);
-    await load();
+    const accepted = await confirm({
+      title: "Eliminar participante",
+      message: warning ?? "¿Eliminar participante?",
+      confirmLabel: "Eliminar",
+      danger: true,
+    });
+    if (!accepted) return;
+    try {
+      await resources.participants.remove(id);
+      await load();
+    } catch (err) {
+      setError((err as Error).message);
+    }
   }
 
   async function update(item: Participant) {
     const warning = await resetWarning(session.id, "teams");
-    if (warning && !confirm(warning)) return;
-    const nextName = prompt("Nombre", item.name);
-    if (!nextName) return;
-    const nextLevel = Number(prompt("Nivel IA 0-5", String(item.ai_level)));
-    await resources.participants.update(item.id, { name: nextName, ai_level: nextLevel });
-    await load();
+    if (warning && !(await confirm({ message: warning, confirmLabel: "Continuar", danger: true }))) return;
+    const values = await form({
+      title: "Editar participante",
+      fields: [
+        { name: "name", label: "Nombre", value: item.name, required: true },
+        { name: "ai_level", label: "Nivel de IA (0 a 5)", type: "number", value: String(item.ai_level), required: true, min: 0, max: 5 },
+      ],
+    });
+    if (!values) return;
+    try {
+      await resources.participants.update(item.id, { name: values.name, ai_level: Number(values.ai_level) });
+      await load();
+    } catch (err) {
+      setError((err as Error).message);
+    }
   }
 
   async function importFile(file?: File) {
     if (!file) return;
     const warning = await resetWarning(session.id, "teams");
-    if (warning && !confirm(warning)) return;
+    if (warning && !(await confirm({ message: warning, confirmLabel: "Continuar", danger: true }))) return;
     try {
       await resources.participants.import(session.id, file);
       await load();

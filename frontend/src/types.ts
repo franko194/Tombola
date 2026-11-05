@@ -129,6 +129,7 @@ export type Evaluation = {
   session: Session;
   token: string;
   status: "open" | "closed" | string;
+  registration_open: boolean;
   judge_url: string;
   criteria: EvaluationCriterion[];
   judges: SessionJudge[];
@@ -139,6 +140,7 @@ export type PublicEvaluation = {
   session: Session;
   token: string;
   status: "open" | "closed" | string;
+  registration_open: boolean;
   criteria: EvaluationCriterion[];
   teams: Team[];
   assignments: Assignment[];

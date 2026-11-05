@@ -27,6 +27,7 @@ def test_a_judge_comment_appears_once_per_team_in_the_report_context():
     client.post(f"/sessions/{session_id}/teams/generate", json={"number_of_teams": 1})
     client.post(f"/sessions/{session_id}/use-cases/assign", json={"mode": "random"})
     evaluation = client.post(f"/sessions/{session_id}/evaluation/open").json()
+    client.post(f"/sessions/{session_id}/evaluation/registration", json={"open": True})
     public = client.get(f"/judge/{evaluation['token']}").json()
     judge = client.post(f"/judge/{evaluation['token']}/identify", json={"name": "Ana"}).json()
     team_id = public["teams"][0]["id"]

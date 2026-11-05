@@ -111,6 +111,7 @@ class SessionEvaluation(Base):
     session_id: Mapped[int] = mapped_column(ForeignKey("sessions.id", ondelete="CASCADE"), unique=True)
     token: Mapped[str] = mapped_column(unique=True)
     status: Mapped[str] = mapped_column(default="open")
+    registration_open: Mapped[bool] = mapped_column(default=True)
     opened_at: Mapped[str] = mapped_column(default=utc_now)
     closed_at: Mapped[str | None] = mapped_column(default=None)
 

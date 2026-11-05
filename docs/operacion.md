@@ -62,7 +62,7 @@ UPDATE organizers SET active = true WHERE email = 'correo@ejemplo.com';
 ## Preparar una sesion de IA Friday
 
 1. Entra con tu correo y contrasena.
-2. En **Sesiones**, crea la sesion con nombre y fecha.
+2. En **Sesiones**, crea la sesion con nombre y fecha. Para encontrar una sesion anterior, usa el buscador del historial (por nombre o fecha; no distingue mayusculas ni acentos).
 3. En **Participantes**, agrega personas a mano o importa un CSV. La importacion reemplaza toda la lista.
 4. En **Casos**, carga los casos de uso de la sesion.
 5. En **Equipos**, elige el numero de equipos y genera el balance.
@@ -78,6 +78,8 @@ Cada vez que reemplazas equipos o casos ya sorteados, la app guarda una copia en
 - Al identificarse, la app les entrega un token que queda guardado en su navegador. Sus votos solo se aceptan con ese token.
 - Si un jurado vuelve a identificarse con el mismo nombre desde otro dispositivo, el token anterior deja de funcionar. El jurado puede usar el boton "No soy [nombre]" para cambiar de identidad en el mismo navegador.
 - El QR debe apuntar a la URL de produccion. Si aparece la advertencia de `localhost`, configura `VITE_PUBLIC_APP_URL` o abre la app desde el dominio de Vercel.
+- Si alguien escribe un nombre que ya esta registrado en la sesion, la app pregunta si es la misma persona (por ejemplo, cambio de celular). Quien no lo es debe agregar su apellido; asi dos personas con el mismo nombre no se pisan.
+- Al abrir la votacion, el registro de jurados se cierra: solo pueden volver a entrar quienes ya estaban registrados. Si llega alguien tarde, usa **Reabrir registro** en la pantalla de Evaluacion (y **Cerrar registro ahora** si quieres cerrarlo antes de abrir la votacion).
 
 Como vota un jurado desde el celular:
 
@@ -85,6 +87,8 @@ Como vota un jurado desde el celular:
 2. Elige un equipo (cada uno muestra su caso) y toca un numero del 1 al 5 en cada criterio. Cada nota muestra su etiqueta: 1 Muy mal, 2 Insuficiente, 3 Aceptable, 4 Bueno, 5 Muy bueno.
 3. Puede dejar un comentario opcional y pulsa **Guardar voto**. La pantalla avanza sola al siguiente equipo sin votar y muestra "X de N votados".
 4. Mientras la votacion siga abierta puede volver a un equipo y pulsar **Actualizar voto**.
+
+Los criterios por defecto (Presentación y comunicación, Usabilidad y diseño, Innovación, Impacto y relevancia, Calidad técnica) se guardan en español. Al arrancar, la API renombra los criterios que se crearon antes en inglés; los votos no se pierden porque dependen del id del criterio.
 
 Otros detalles: si el jurado se registra antes de que abras la votacion, su pantalla se actualiza sola al abrirla o cerrarla. Lo que puntua y no guarda se conserva al cambiar de equipo o recargar la pagina. Los comentarios se guardan en la tabla `team_scores` (columna `comment`), una vez por criterio, y el reporte los cuenta una sola vez por jurado y equipo.
 
@@ -116,6 +120,7 @@ Las entradas se consultan en la API con `GET /sessions/{id}/draw-history`.
 | Vuelve a aparecer la pantalla de inicio | La sesion expiro (12 horas) o la cuenta fue desactivada | Vuelve a iniciar sesion. Si no entra, revisa `active` en `organizers`. |
 | "Correo o contraseña incorrectos" | Contraseña mal escrita o organizador sin contraseña | Un administrador puede cambiarla desde **Organizadores**, o ejecuta `python -m app.set_organizer_password correo`. |
 | Error 503 al iniciar sesion | Falta `SESSION_SECRET` en el entorno | Configurala en Vercel y redespliega. |
+| Un jurado ve "El registro de jurados ya cerró" | La votacion ya se abrio y el jurado no estaba registrado | En **Evaluacion**, pulsa **Reabrir registro**. |
 | `/api/health/db` responde SQLite | Falta `DATABASE_URL` en Vercel | Configurala y redespliega. |
 | Los datos desaparecen al redesplegar | La app esta usando SQLite temporal | Configura `DATABASE_URL` con Neon. |
 | El QR no abre en el celular | El QR apunta a `localhost` | Configura `VITE_PUBLIC_APP_URL` o usa la URL de Vercel. |

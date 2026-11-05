@@ -135,6 +135,12 @@ class JudgeIdentifyRequest(BaseModel):
     name: str
     email: str | None = None
     organization: str | None = None
+    # The judge confirmed that a name already registered in this session is theirs (for example, a new phone).
+    confirm_existing: bool = False
+
+
+class RegistrationUpdate(BaseModel):
+    open: bool
 
 
 class JudgeOut(ORMModel):
@@ -221,6 +227,7 @@ class EvaluationOut(BaseModel):
     session: SessionOut
     token: str
     status: str
+    registration_open: bool
     judge_url: str
     criteria: list[EvaluationCriterionOut]
     judges: list[SessionJudgeOut]
@@ -231,6 +238,7 @@ class PublicEvaluationOut(BaseModel):
     session: SessionOut
     token: str
     status: str
+    registration_open: bool
     criteria: list[EvaluationCriterionOut]
     teams: list[TeamOut]
     assignments: list[AssignmentOut]

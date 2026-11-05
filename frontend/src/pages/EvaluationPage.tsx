@@ -1,6 +1,7 @@
 import { Clipboard, Lock, QrCode, RefreshCw, Trash2, Trophy, Unlock } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { resources } from "../api/resources";
+import { useDialogs } from "../components/Dialogs";
 import { JudgeQrCode } from "../components/JudgeQrCode";
 import { buildJudgeUrl, isLocalUrl } from "../lib/publicUrl";
 import { criterionLabel, scoreLabels } from "../lib/scoring";
@@ -10,6 +11,7 @@ export function EvaluationPage({ session }: { session: Session }) {
   const [evaluation, setEvaluation] = useState<Evaluation | null>(null);
   const [loading, setLoading] = useState(false);
   const [removingJudgeId, setRemovingJudgeId] = useState<number | null>(null);
+  const { confirm } = useDialogs();
   const [error, setError] = useState("");
 
   async function load() {
@@ -53,13 +55,30 @@ export function EvaluationPage({ session }: { session: Session }) {
     }
   }
 
+  async function setRegistration(open: boolean) {
+    try {
+      setError("");
+      setLoading(true);
+      setEvaluation(await resources.evaluation.setRegistration(session.id, open));
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setLoading(false);
+    }
+  }
+
   async function copyLink() {
     if (!judgeUrl) return;
     await navigator.clipboard.writeText(judgeUrl);
   }
 
   async function removeJudge(judgeId: number, judgeName: string) {
-    const shouldRemove = window.confirm(`¿Eliminar al jurado "${judgeName}" de esta sesión? También se eliminarán sus votos.`);
+    const shouldRemove = await confirm({
+      title: "Eliminar jurado",
+      message: `¿Eliminar al jurado "${judgeName}" de esta sesión? También se eliminarán sus votos.`,
+      confirmLabel: "Eliminar",
+      danger: true,
+    });
     if (!shouldRemove) return;
 
     try {
@@ -81,7 +100,7 @@ export function EvaluationPage({ session }: { session: Session }) {
           <div>
             <h2 className="text-2xl font-black text-slate-950">Evaluación por fecha</h2>
             <p className="mt-1 max-w-2xl font-medium text-slate-600">
-              El QR está disponible desde el inicio. Los jurados pueden registrarse antes de abrir la votación.
+              El QR está disponible desde el inicio. Los jurados pueden registrarse antes de abrir la votación; al abrirla, el registro se cierra.
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -135,6 +154,23 @@ export function EvaluationPage({ session }: { session: Session }) {
               <p className="mt-3 text-sm font-bold text-slate-500">
                 Estado: {evaluation.status === "open" ? "Abierta" : evaluation.status === "prepared" ? "Registro previo" : "Cerrada"}
               </p>
+              {evaluation.status !== "closed" ? (
+                <div className="mt-3 rounded-lg bg-slate-50 p-3">
+                  <p className="text-sm font-bold text-slate-600">Registro de jurados: {evaluation.registration_open ? "abierto" : "cerrado"}</p>
+                  <p className="mt-1 text-xs font-semibold text-slate-500">
+                    {evaluation.registration_open
+                      ? "Se cierra solo al abrir la votación."
+                      : "Se cerró al abrir la votación. Reábrelo si llega un jurado tarde."}
+                  </p>
+                  <button
+                    className="btn-secondary mt-2 w-full"
+                    onClick={() => void setRegistration(!evaluation.registration_open)}
+                    disabled={loading}
+                  >
+                    {evaluation.registration_open ? "Cerrar registro ahora" : "Reabrir registro"}
+                  </button>
+                </div>
+              ) : null}
             </div>
 
             <div className="lab-surface rounded-lg p-5">

@@ -334,17 +334,18 @@ def test_evaluation_flow_registers_judge_scores_and_ranking():
     client.post(f"/sessions/{session['id']}/use-cases/assign", json={"mode": "random"})
 
     opened = client.post(f"/sessions/{session['id']}/evaluation/open")
+    client.post(f"/sessions/{session['id']}/evaluation/registration", json={"open": True})
 
     assert opened.status_code == 200
     evaluation = opened.json()
     assert evaluation["status"] == "open"
     assert len(evaluation["criteria"]) == 5
     assert [criterion["name"] for criterion in evaluation["criteria"]] == [
-        "Presentation & Communication",
-        "Usability & Desing",
-        "Innovation",
-        "Impact and Relevance",
-        "Technical Quiality",
+        "Presentación y comunicación",
+        "Usabilidad y diseño",
+        "Innovación",
+        "Impacto y relevancia",
+        "Calidad técnica",
     ]
 
     public = client.get(f"/judge/{evaluation['token']}").json()
@@ -383,6 +384,7 @@ def test_remove_judge_from_session_deletes_scores():
     client.post(f"/sessions/{session['id']}/use-cases/assign", json={"mode": "random"})
 
     evaluation = client.post(f"/sessions/{session['id']}/evaluation/open").json()
+    client.post(f"/sessions/{session['id']}/evaluation/registration", json={"open": True})
     public = client.get(f"/judge/{evaluation['token']}").json()
     identity = client.post(f"/judge/{evaluation['token']}/identify", json={"name": "Jurado a borrar"}).json()
     judge = identity["judge"]
@@ -440,6 +442,7 @@ def test_evaluation_report_generates_feedback(monkeypatch):
     client.post(f"/sessions/{session['id']}/teams/generate", json={"number_of_teams": 2})
     client.post(f"/sessions/{session['id']}/use-cases/assign", json={"mode": "random"})
     evaluation = client.post(f"/sessions/{session['id']}/evaluation/open").json()
+    client.post(f"/sessions/{session['id']}/evaluation/registration", json={"open": True})
     public = client.get(f"/judge/{evaluation['token']}").json()
     identity = client.post(f"/judge/{evaluation['token']}/identify", json={"name": "Jurado Uno"}).json()
     judge = identity["judge"]

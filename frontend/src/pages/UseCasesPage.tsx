@@ -1,6 +1,7 @@
 import { Pencil, Plus, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { resources } from "../api/resources";
+import { useDialogs } from "../components/Dialogs";
 import { resetWarning } from "../lib/drawGuard";
 import type { Session, UseCase } from "../types";
 
@@ -8,6 +9,7 @@ export function UseCasesPage({ session }: { session: Session }) {
   const [useCases, setUseCases] = useState<UseCase[]>([]);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
+  const { confirm, form } = useDialogs();
 
   async function load() {
     setUseCases(await resources.useCases.list(session.id));
@@ -19,7 +21,7 @@ export function UseCasesPage({ session }: { session: Session }) {
 
   async function add() {
     const warning = await resetWarning(session.id, "assignments");
-    if (warning && !confirm(warning)) return;
+    if (warning && !(await confirm({ message: warning, confirmLabel: "Continuar", danger: true }))) return;
     await resources.useCases.create(session.id, { title, description });
     setTitle("");
     setDescription("");
@@ -28,17 +30,28 @@ export function UseCasesPage({ session }: { session: Session }) {
 
   async function update(item: UseCase) {
     const warning = await resetWarning(session.id, "assignments");
-    if (warning && !confirm(warning)) return;
-    const nextTitle = prompt("Título", item.title);
-    if (!nextTitle) return;
-    const nextDescription = prompt("Descripción", item.description ?? "") ?? "";
-    await resources.useCases.update(item.id, { title: nextTitle, description: nextDescription });
+    if (warning && !(await confirm({ message: warning, confirmLabel: "Continuar", danger: true }))) return;
+    const values = await form({
+      title: "Editar caso de uso",
+      fields: [
+        { name: "title", label: "Título", value: item.title, required: true },
+        { name: "description", label: "Descripción", type: "textarea", value: item.description ?? "" },
+      ],
+    });
+    if (!values) return;
+    await resources.useCases.update(item.id, { title: values.title, description: values.description });
     await load();
   }
 
   async function remove(id: number) {
     const warning = await resetWarning(session.id, "assignments");
-    if (!confirm(warning ?? "¿Eliminar caso de uso?")) return;
+    const accepted = await confirm({
+      title: "Eliminar caso de uso",
+      message: warning ?? "¿Eliminar caso de uso?",
+      confirmLabel: "Eliminar",
+      danger: true,
+    });
+    if (!accepted) return;
     await resources.useCases.remove(id);
     await load();
   }

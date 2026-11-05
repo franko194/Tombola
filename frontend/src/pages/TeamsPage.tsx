@@ -1,6 +1,7 @@
 import { RefreshCw, Save, Sparkles, Users } from "lucide-react";
 import { useEffect, useState, type PointerEvent } from "react";
 import { resources } from "../api/resources";
+import { useDialogs } from "../components/Dialogs";
 import type { Session, Team, TeamInsights, TeamsResponse } from "../types";
 
 function sourceLabel(source: string) {
@@ -39,6 +40,7 @@ export function TeamsPage({ session }: { session: Session }) {
   const [draggingMember, setDraggingMember] = useState<{ memberId: number; sourceTeamId: number } | null>(null);
   const [dropTeamId, setDropTeamId] = useState<number | null>(null);
   const [error, setError] = useState("");
+  const { confirm } = useDialogs();
 
   async function load() {
     setData(await resources.teams.list(session.id));
@@ -52,9 +54,12 @@ export function TeamsPage({ session }: { session: Session }) {
     try {
       const hasTeams = Boolean(data?.teams.length);
       if (hasTeams || teamsDirty) {
-        const confirmed = window.confirm(
-          "Regenerar equipos reemplazará la distribución actual y limpiará las asignaciones de casos. ¿Quieres continuar?",
-        );
+        const confirmed = await confirm({
+          title: "Regenerar equipos",
+          message: "Regenerar equipos reemplazará la distribución actual y limpiará las asignaciones de casos. ¿Quieres continuar?",
+          confirmLabel: "Regenerar",
+          danger: true,
+        });
         if (!confirmed) return;
       }
       setError("");

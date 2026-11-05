@@ -12,6 +12,8 @@ const messages: Record<string, string> = {
   "Judge not found in this evaluation": "El jurado no está en esta evaluación.",
   "Generate teams before requesting an evaluation report": "Genera los equipos antes de pedir el reporte de evaluación.",
   "Evaluation is closed": "La evaluación está cerrada.",
+  "Judge registration is closed": "El registro de jurados ya cerró. Pide al organizador que lo reabra.",
+  "Judge name already registered": "Ya hay un jurado con ese nombre.",
   "Name is required": "El nombre es obligatorio.",
   "Judge is not registered for this evaluation": "El jurado no está registrado en esta evaluación.",
   "Team not found": "No se encontró el equipo.",

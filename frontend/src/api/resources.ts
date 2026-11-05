@@ -94,12 +94,14 @@ export const resources = {
     prepare: (sessionId: number) => api<Evaluation>(`/sessions/${sessionId}/evaluation/prepare`, { method: "POST" }),
     open: (sessionId: number) => api<Evaluation>(`/sessions/${sessionId}/evaluation/open`, { method: "POST" }),
     close: (sessionId: number) => api<Evaluation>(`/sessions/${sessionId}/evaluation/close`, { method: "POST" }),
+    setRegistration: (sessionId: number, open: boolean) =>
+      api<Evaluation>(`/sessions/${sessionId}/evaluation/registration`, { method: "POST", json: { open } }),
     get: (sessionId: number) => api<Evaluation>(`/sessions/${sessionId}/evaluation`),
     report: (sessionId: number) => api<EvaluationReport>(`/sessions/${sessionId}/evaluation/report`, { method: "POST" }),
     removeJudge: (sessionId: number, judgeId: number) =>
       api<Evaluation>(`/sessions/${sessionId}/evaluation/judges/${judgeId}`, { method: "DELETE" }),
     publicGet: (token: string) => api<PublicEvaluation>(`/judge/${token}`),
-    identify: (token: string, payload: { name: string }) =>
+    identify: (token: string, payload: { name: string; confirm_existing?: boolean }) =>
       api<{ judge: Judge; vote_token: string }>(`/judge/${token}/identify`, { method: "POST", json: payload }),
     scores: (token: string, judgeId: number, voteToken: string) =>
       api<JudgeScore[]>(`/judge/${token}/scores?judge_id=${judgeId}`, { headers: { "X-Judge-Token": voteToken } }),

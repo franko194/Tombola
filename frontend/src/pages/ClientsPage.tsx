@@ -1,6 +1,7 @@
 import { ChevronLeft, ChevronRight, Pencil, Plus, Trash2 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { resources } from "../api/resources";
+import { useDialogs } from "../components/Dialogs";
 import type { ClientVisit, ClientVisitInput } from "../types";
 
 const weekdays = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
@@ -40,6 +41,7 @@ function emptyDraft(date: string): Draft {
 }
 
 export function ClientsPage() {
+  const { confirm } = useDialogs();
   const today = new Date();
   const todayIso = `${today.getFullYear()}-${pad(today.getMonth() + 1)}-${pad(today.getDate())}`;
   const [cursor, setCursor] = useState({ year: today.getFullYear(), monthIndex: today.getMonth() });
@@ -120,7 +122,13 @@ export function ClientsPage() {
   }
 
   async function remove(visit: ClientVisit) {
-    if (!confirm(`¿Eliminar la visita de ${visit.company_name}?`)) return;
+    const accepted = await confirm({
+      title: "Eliminar visita",
+      message: `¿Eliminar la visita de ${visit.company_name}?`,
+      confirmLabel: "Eliminar",
+      danger: true,
+    });
+    if (!accepted) return;
     try {
       await resources.clients.remove(visit.id);
       if (draft?.id === visit.id) setDraft(null);

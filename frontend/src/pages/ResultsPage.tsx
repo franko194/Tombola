@@ -1,6 +1,7 @@
 import { CheckCircle, Download, FileText, Presentation, RotateCcw, Sparkles } from "lucide-react";
 import { useEffect, useState } from "react";
 import { resources } from "../api/resources";
+import { useDialogs } from "../components/Dialogs";
 import type { Assignment, EvaluationReport, Results, Session } from "../types";
 
 export function ResultsPage({
@@ -16,6 +17,7 @@ export function ResultsPage({
   const [report, setReport] = useState<EvaluationReport | null>(null);
   const [reportError, setReportError] = useState("");
   const [loadingReport, setLoadingReport] = useState(false);
+  const { confirm } = useDialogs();
 
   async function load() {
     setResults(await resources.results.get(session.id));
@@ -28,15 +30,13 @@ export function ResultsPage({
   async function complete() {
     const participantsCount = results?.teams.flatMap((team) => team.members).length ?? 0;
     const message = [
-      "¿Completar sesión?",
-      "",
       `Equipos: ${results?.teams.length ?? 0}`,
       `Participantes: ${participantsCount}`,
       `Casos asignados: ${results?.assignments.length ?? 0}`,
       "",
       "Se guardará un snapshot histórico de estos resultados.",
     ].join("\n");
-    if (!confirm(message)) return;
+    if (!(await confirm({ title: "¿Completar sesión?", message, confirmLabel: "Completar" }))) return;
     await resources.sessions.complete(session.id);
     onReturnHome();
   }
