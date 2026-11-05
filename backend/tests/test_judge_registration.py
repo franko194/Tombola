@@ -55,17 +55,22 @@ def test_a_different_name_registers_without_confirmation():
     assert other.status_code == 200
 
 
-def test_opening_the_vote_closes_judge_registration():
+def test_opening_the_vote_keeps_judge_registration_open():
     client = organizer_client()
     session_id, evaluation = prepared_evaluation(client)
     url = f"/judge/{evaluation['token']}/identify"
     registered = client.post(url, json={"name": "Ana"}).json()
-    assert client.get(f"/judge/{evaluation['token']}").json()["registration_open"] is True
 
     opened = client.post(f"/sessions/{session_id}/evaluation/open").json()
 
-    assert opened["registration_open"] is False
-    assert client.get(f"/judge/{evaluation['token']}").json()["registration_open"] is False
+    assert opened["registration_open"] is True
+    assert client.post(url, json={"name": "Carla"}).status_code == 200
+
+    # Stale databases may still hold a closed registration; opening the vote again repairs it.
+    client.post(f"/sessions/{session_id}/evaluation/registration", json={"open": False})
+    assert client.post(f"/sessions/{session_id}/evaluation/open").json()["registration_open"] is True
+
+    client.post(f"/sessions/{session_id}/evaluation/registration", json={"open": False})
     late = client.post(url, json={"name": "Beto"})
     assert late.status_code == 403
     assert late.json()["detail"] == "Judge registration is closed"
@@ -79,6 +84,7 @@ def test_the_organizer_can_reopen_registration_for_late_judges():
     client = organizer_client()
     session_id, evaluation = prepared_evaluation(client)
     client.post(f"/sessions/{session_id}/evaluation/open")
+    client.post(f"/sessions/{session_id}/evaluation/registration", json={"open": False})
 
     reopened = client.post(f"/sessions/{session_id}/evaluation/registration", json={"open": True})
 

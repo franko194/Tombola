@@ -5,6 +5,19 @@ export default {
   future: { hoverOnlyWhenSupported: true },
   theme: {
     extend: {
+      // Institutional blues for the events calendar. Replace these hex values with the official brand ones when available.
+      colors: {
+        inst: {
+          navy: "#0A2F5C",
+          navyPale: "#EAF0F8",
+          blue: "#1A7FD4",
+          bluePale: "#EAF2FB",
+          blueBorder: "#9DC3EA",
+          alert: "#D9263F",
+          alertPale: "#FDEEF0",
+          alertBorder: "#F3B6BF",
+        },
+      },
       fontFamily: {
         sans: ["Inter", "Segoe UI", "Arial", "sans-serif"],
       },

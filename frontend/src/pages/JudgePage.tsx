@@ -244,7 +244,7 @@ export function JudgePage({ token }: { token: string }) {
           ) : null}
           {!judge && !evaluation.registration_open && evaluation.status !== "closed" ? (
             <p className="mt-3 rounded-lg bg-amber-50 p-3 font-bold text-amber-800">
-              El registro de jurados ya cerró. Si te registraste antes, escribe tu nombre para continuar; si no, pide al organizador que lo reabra.
+              El registro de jurados cerró. Si ya te registraste, escribe tu nombre exacto para continuar.
             </p>
           ) : null}
           {evaluation.status === "closed" ? (

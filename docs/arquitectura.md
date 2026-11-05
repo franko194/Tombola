@@ -83,7 +83,7 @@ Los mensajes de error no distinguen entre correo inexistente y contrasena incorr
 | `judge_vote_tokens` | Hash del token de voto de cada jurado en cada sesion. |
 | `organizers` | Correos autorizados, contrasena (hash), estado activo. |
 | `login_failures` | Un registro por inicio de sesion fallido, para bloquear 15 minutos tras 5 intentos. |
-| `client_visits` | Visitas de clientes para el calendario. Independiente de las sesiones. |
+| `client_visits` | Eventos del calendario (internos o externos, confirmados o tentativos, con hora de inicio y término). Independiente de las sesiones. |
 
 Las tablas se crean con `Base.metadata.create_all` al arrancar. Las columnas que se agregan a tablas existentes requieren un cambio manual o una migracion en `database.py`; hoy existen `migrate_assignments_allow_repeated_use_cases`, `migrate_added_columns` (columnas nuevas) y `migrate_criteria_names` (criterios antiguos en ingles).
 

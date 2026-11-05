@@ -259,11 +259,18 @@ class DrawHistoryUpdate(BaseModel):
     note: str | None = None
 
 
+TIME_PATTERN = r"^([01]\d|2[0-3]):[0-5]\d$"
+
+
 class ClientVisitCreate(BaseModel):
     company_name: str = Field(min_length=1)
     contact: str | None = None
     notes: str | None = None
     visit_date: date
+    is_internal: bool = False
+    tentative: bool = False
+    start_time: str = Field(default="09:00", pattern=TIME_PATTERN)
+    end_time: str = Field(default="18:00", pattern=TIME_PATTERN)
 
 
 class ClientVisitUpdate(BaseModel):
@@ -271,6 +278,10 @@ class ClientVisitUpdate(BaseModel):
     contact: str | None = None
     notes: str | None = None
     visit_date: date | None = None
+    is_internal: bool | None = None
+    tentative: bool | None = None
+    start_time: str | None = Field(default=None, pattern=TIME_PATTERN)
+    end_time: str | None = Field(default=None, pattern=TIME_PATTERN)
 
 
 class ClientVisitOut(ORMModel):
@@ -279,3 +290,7 @@ class ClientVisitOut(ORMModel):
     contact: str | None = None
     notes: str | None = None
     visit_date: date
+    is_internal: bool
+    tentative: bool
+    start_time: str
+    end_time: str

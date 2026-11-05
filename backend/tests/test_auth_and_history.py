@@ -197,6 +197,26 @@ def test_client_visits_can_be_planned_by_month_edited_and_deleted():
     assert client.get("/clients", params={"month": "bad"}).status_code == 400
 
 
+def test_client_visit_type_times_and_weekday_rules():
+    client = organizer_client()
+    created = client.post("/clients", json={"company_name": "AI Friday", "visit_date": "2026-11-20"}).json()
+    assert (created["is_internal"], created["tentative"]) == (False, False)
+    assert (created["start_time"], created["end_time"]) == ("09:00", "18:00")
+
+    edited = client.patch(
+        f"/clients/{created['id']}",
+        json={"is_internal": True, "tentative": True, "start_time": "10:00", "end_time": "12:00"},
+    ).json()
+    assert (edited["is_internal"], edited["tentative"], edited["start_time"], edited["end_time"]) == (True, True, "10:00", "12:00")
+
+    # 2026-11-21 is a Saturday.
+    assert client.post("/clients", json={"company_name": "X", "visit_date": "2026-11-21"}).status_code == 400
+    assert client.patch(f"/clients/{created['id']}", json={"visit_date": "2026-11-22"}).status_code == 400
+    assert client.post("/clients", json={"company_name": "X", "visit_date": "2026-11-20", "start_time": "12:00", "end_time": "11:00"}).status_code == 400
+    assert client.patch(f"/clients/{created['id']}", json={"end_time": "09:30"}).status_code == 400
+    assert client.post("/clients", json={"company_name": "X", "visit_date": "2026-11-20", "start_time": "25:00"}).status_code == 422
+
+
 def test_organizer_access_is_revoked_when_the_row_is_deactivated():
     from app.database import SessionLocal
     from app.models import Organizer

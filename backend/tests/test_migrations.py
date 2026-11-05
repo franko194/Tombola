@@ -21,8 +21,23 @@ def test_columns_added_in_later_versions_are_created_on_existing_tables():
             )
         )
 
+    with engine.begin() as connection:
+        connection.execute(
+            text(
+                "CREATE TABLE client_visits (id INTEGER PRIMARY KEY, company_name VARCHAR NOT NULL, contact VARCHAR, notes VARCHAR, "
+                "visit_date DATE NOT NULL, created_at VARCHAR NOT NULL, updated_at VARCHAR NOT NULL)"
+            )
+        )
+        connection.execute(
+            text("INSERT INTO client_visits (company_name, visit_date, created_at, updated_at) VALUES ('Acme', '2026-11-18', 'x', 'x')")
+        )
+
     init_db()
 
+    assert {"is_internal", "tentative", "start_time", "end_time"} <= columns_of("client_visits")
+    with engine.begin() as connection:
+        row = connection.execute(text("SELECT is_internal, tentative, start_time, end_time FROM client_visits")).one()
+    assert tuple(row) == (0, 0, "09:00", "18:00")
     assert {"password_hash", "is_admin"} <= columns_of("organizers")
     assert "note" in columns_of("draw_history")
 

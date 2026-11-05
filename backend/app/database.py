@@ -65,6 +65,15 @@ def migrate_added_columns() -> None:
         {"password_hash": "VARCHAR", "is_admin": "BOOLEAN NOT NULL DEFAULT FALSE"},
     )
     add_missing_columns("draw_history", {"note": "VARCHAR"})
+    add_missing_columns(
+        "client_visits",
+        {
+            "is_internal": "BOOLEAN NOT NULL DEFAULT FALSE",
+            "tentative": "BOOLEAN NOT NULL DEFAULT FALSE",
+            "start_time": "VARCHAR NOT NULL DEFAULT '09:00'",
+            "end_time": "VARCHAR NOT NULL DEFAULT '18:00'",
+        },
+    )
     add_missing_columns("session_evaluations", {"registration_open": "BOOLEAN NOT NULL DEFAULT TRUE"})
 
 

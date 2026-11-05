@@ -254,8 +254,8 @@ def open_evaluation(session_id: int, request: Request, db: Session = Depends(get
     evaluation = get_or_create_evaluation(db, session_id, "open")
     evaluation.status = "open"
     evaluation.closed_at = None
-    # Opening the vote fixes the list of judges; the organizer can reopen registration for late arrivals.
-    evaluation.registration_open = False
+    # Judges can always register while the vote is open. The registration endpoint stays for closing it by API if ever needed.
+    evaluation.registration_open = True
     db.commit()
     db.refresh(evaluation)
     return serialize_evaluation(db, evaluation, request)

@@ -75,20 +75,17 @@ export function TopBar({ email, isAdmin, view, openSessionName, onOpenSessions, 
           >
             {open ? <X size={20} /> : <Menu size={20} />}
           </button>
-          <span className="text-xs font-black uppercase tracking-[0.18em] text-teal-700">IA Friday</span>
+          <span className="text-xs font-black uppercase tracking-[0.18em] text-teal-700">AI Lab Chile</span>
 
           {open ? (
             <nav role="menu" className="absolute left-0 top-12 grid w-72 max-w-[calc(100vw-2rem)] gap-1 rounded-lg border border-slate-200 bg-white p-2 shadow-xl">
-              {openSessionName && view !== "sessions" ? (
-                <MenuItem icon={<Undo2 size={18} />} label={`Volver a «${openSessionName}»`} onClick={() => go(onResumeSession)} />
-              ) : null}
               <MenuItem
                 icon={<FolderOpen size={18} />}
                 label="Sesiones"
                 active={view === "sessions" && !openSessionName}
                 onClick={() => go(onOpenSessions)}
               />
-              <MenuItem icon={<CalendarDays size={18} />} label="Calendario de clientes" active={view === "clients"} onClick={() => go(onOpenClients)} />
+              <MenuItem icon={<CalendarDays size={18} />} label="Calendario de eventos" active={view === "clients"} onClick={() => go(onOpenClients)} />
               {isAdmin ? (
                 <MenuItem icon={<Users size={18} />} label="Organizadores" active={view === "organizers"} onClick={() => go(onOpenOrganizers)} />
               ) : null}
@@ -100,10 +97,23 @@ export function TopBar({ email, isAdmin, view, openSessionName, onOpenSessions, 
           <span className="hidden max-w-[16rem] truncate text-sm font-semibold text-slate-500 sm:block" title={email}>
             {email}
           </span>
-          <button className="btn-secondary !min-h-10" onClick={onLogout}>
-            <LogOut size={18} />
-            Salir
-          </button>
+          <div className="grid gap-1.5">
+            <button className="btn-secondary !min-h-10" onClick={onLogout}>
+              <LogOut size={18} />
+              Salir
+            </button>
+            {view !== "sessions" ? (
+              <button
+                className="btn-secondary !min-h-10"
+                onClick={openSessionName ? onResumeSession : onOpenSessions}
+                title={openSessionName ? `Volver a «${openSessionName}»` : "Volver a las sesiones"}
+                aria-label={openSessionName ? `Volver a la sesión ${openSessionName}` : "Volver a las sesiones"}
+              >
+                <Undo2 size={18} />
+                Volver
+              </button>
+            ) : null}
+          </div>
         </div>
       </div>
     </header>

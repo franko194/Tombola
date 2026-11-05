@@ -8,7 +8,7 @@ Aplicacion web para las sesiones semanales de IA Friday del Innovation Lab. Perm
 - Mostrar resultados en pantalla compartida.
 - Evaluar equipos con jurados que entran por QR, con ranking en vivo.
 - Guardar el historial de cada sorteo que se reemplaza o elimina.
-- Llevar un calendario mensual de visitas de clientes, separado de las sesiones.
+- Llevar un calendario mensual de eventos internos y externos (de lunes a viernes, con feriados de Chile y porcentaje de ocupación), separado de las sesiones.
 
 Solo los organizadores pueden entrar a la app. Los jurados no inician sesion: entran por su QR.
 

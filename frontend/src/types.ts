@@ -170,6 +170,10 @@ export type ClientVisit = {
   contact?: string | null;
   notes?: string | null;
   visit_date: string;
+  is_internal: boolean;
+  tentative: boolean;
+  start_time: string;
+  end_time: string;
 };
 
 export type ClientVisitInput = {
@@ -177,6 +181,10 @@ export type ClientVisitInput = {
   contact?: string | null;
   notes?: string | null;
   visit_date: string;
+  is_internal: boolean;
+  tentative: boolean;
+  start_time: string;
+  end_time: string;
 };
 
 export type Organizer = {

@@ -24,6 +24,17 @@ def month_bounds(month: str) -> tuple[date, date]:
     return first, next_first
 
 
+def ensure_weekday(value: date) -> None:
+    # The calendar only plans Monday to Friday.
+    if value.weekday() >= 5:
+        raise HTTPException(status_code=400, detail="Events cannot be planned on weekends")
+
+
+def ensure_time_range(start_time: str, end_time: str) -> None:
+    if end_time <= start_time:
+        raise HTTPException(status_code=400, detail="End time must be after start time")
+
+
 def get_visit(db: Session, visit_id: int) -> ClientVisit:
     visit = db.get(ClientVisit, visit_id)
     if not visit:
@@ -42,11 +53,17 @@ def list_client_visits(month: str | None = None, db: Session = Depends(get_db)) 
 
 @router.post("", response_model=ClientVisitOut)
 def create_client_visit(payload: ClientVisitCreate, db: Session = Depends(get_db)) -> ClientVisit:
+    ensure_weekday(payload.visit_date)
+    ensure_time_range(payload.start_time, payload.end_time)
     visit = ClientVisit(
         company_name=payload.company_name.strip(),
         contact=clean_text(payload.contact),
         notes=clean_text(payload.notes),
         visit_date=payload.visit_date,
+        is_internal=payload.is_internal,
+        tentative=payload.tentative,
+        start_time=payload.start_time,
+        end_time=payload.end_time,
         created_at=utc_now(),
         updated_at=utc_now(),
     )
@@ -67,7 +84,15 @@ def update_client_visit(visit_id: int, payload: ClientVisitUpdate, db: Session =
     if "notes" in data:
         visit.notes = clean_text(data["notes"])
     if "visit_date" in data and data["visit_date"] is not None:
+        ensure_weekday(data["visit_date"])
         visit.visit_date = data["visit_date"]
+    for flag in ("is_internal", "tentative"):
+        if data.get(flag) is not None:
+            setattr(visit, flag, data[flag])
+    for field in ("start_time", "end_time"):
+        if data.get(field) is not None:
+            setattr(visit, field, data[field])
+    ensure_time_range(visit.start_time, visit.end_time)
     visit.updated_at = utc_now()
     db.commit()
     db.refresh(visit)

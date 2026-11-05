@@ -55,18 +55,6 @@ export function EvaluationPage({ session }: { session: Session }) {
     }
   }
 
-  async function setRegistration(open: boolean) {
-    try {
-      setError("");
-      setLoading(true);
-      setEvaluation(await resources.evaluation.setRegistration(session.id, open));
-    } catch (err) {
-      setError((err as Error).message);
-    } finally {
-      setLoading(false);
-    }
-  }
-
   async function copyLink() {
     if (!judgeUrl) return;
     await navigator.clipboard.writeText(judgeUrl);
@@ -100,25 +88,8 @@ export function EvaluationPage({ session }: { session: Session }) {
           <div>
             <h2 className="text-2xl font-black text-slate-950">Evaluación por fecha</h2>
             <p className="mt-1 max-w-2xl font-medium text-slate-600">
-              El QR está disponible desde el inicio. Los jurados pueden registrarse antes de abrir la votación; al abrirla, el registro se cierra.
+              El QR está disponible desde el inicio. Los jurados pueden registrarse antes y durante la votación.
             </p>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <button className="btn-secondary" onClick={() => void load()}>
-              <RefreshCw size={18} />
-              Actualizar
-            </button>
-            {!evaluation || evaluation.status === "closed" || evaluation.status === "prepared" ? (
-              <button className="btn-primary" onClick={() => void openEvaluation()} disabled={loading}>
-                <Unlock size={18} />
-                {evaluation?.status === "closed" ? "Reabrir evaluación" : "Abrir votación"}
-              </button>
-            ) : (
-              <button className="btn-danger" onClick={() => void closeEvaluation()} disabled={loading}>
-                <Lock size={18} />
-                Cerrar evaluación
-              </button>
-            )}
           </div>
         </div>
         {error ? <p className="mt-3 rounded-lg bg-red-50 p-3 font-semibold text-red-700">{error}</p> : null}
@@ -151,26 +122,28 @@ export function EvaluationPage({ session }: { session: Session }) {
               <a className="btn-secondary mt-3 w-full" href={judgeUrl || undefined} target="_blank" rel="noreferrer" aria-disabled={!judgeUrl}>
                 Abrir link
               </a>
+              <button className="btn-secondary mt-3 w-full" onClick={() => void load()}>
+                <RefreshCw size={18} />
+                Actualizar
+              </button>
+              {!evaluation || evaluation.status === "closed" || evaluation.status === "prepared" ? (
+                <button className="btn-primary mt-3 w-full" onClick={() => void openEvaluation()} disabled={loading}>
+                  <Unlock size={18} />
+                  {evaluation?.status === "closed" ? "Reabrir evaluación" : "Abrir votación"}
+                </button>
+              ) : (
+                <button className="btn-danger mt-3 w-full" onClick={() => void closeEvaluation()} disabled={loading}>
+                  <Lock size={18} />
+                  Cerrar evaluación
+                </button>
+              )}
               <p className="mt-3 text-sm font-bold text-slate-500">
                 Estado: {evaluation.status === "open" ? "Abierta" : evaluation.status === "prepared" ? "Registro previo" : "Cerrada"}
               </p>
-              {evaluation.status !== "closed" ? (
-                <div className="mt-3 rounded-lg bg-slate-50 p-3">
-                  <p className="text-sm font-bold text-slate-600">Registro de jurados: {evaluation.registration_open ? "abierto" : "cerrado"}</p>
-                  <p className="mt-1 text-xs font-semibold text-slate-500">
-                    {evaluation.registration_open
-                      ? "Se cierra solo al abrir la votación."
-                      : "Se cerró al abrir la votación. Reábrelo si llega un jurado tarde."}
-                  </p>
-                  <button
-                    className="btn-secondary mt-2 w-full"
-                    onClick={() => void setRegistration(!evaluation.registration_open)}
-                    disabled={loading}
-                  >
-                    {evaluation.registration_open ? "Cerrar registro ahora" : "Reabrir registro"}
-                  </button>
-                </div>
-              ) : null}
+              <p className="mt-1 text-sm font-bold text-slate-500">
+                {evaluation.judges.length} {evaluation.judges.length === 1 ? "jurado registrado" : "jurados registrados"} ·{" "}
+                {evaluation.judges.filter((item) => evaluation.ranking.length > 0 && item.voted_teams >= evaluation.ranking.length).length} ya votaron todos los equipos
+              </p>
             </div>
 
             <div className="lab-surface rounded-lg p-5">

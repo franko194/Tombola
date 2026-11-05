@@ -202,6 +202,13 @@ class ClientVisit(Base):
     contact: Mapped[str | None] = mapped_column(default=None)
     notes: Mapped[str | None] = mapped_column(default=None)
     visit_date: Mapped[date] = mapped_column(index=True)
+    # Internal events (AI Friday, Experiments...) versus external ones (a client visiting).
+    is_internal: Mapped[bool] = mapped_column(default=False, server_default="0")
+    # Tentative events are possible workshops that are not confirmed yet.
+    tentative: Mapped[bool] = mapped_column(default=False, server_default="0")
+    # "HH:MM" local times, used to compute how much of the workday the event takes.
+    start_time: Mapped[str] = mapped_column(default="09:00", server_default="09:00")
+    end_time: Mapped[str] = mapped_column(default="18:00", server_default="18:00")
     created_at: Mapped[str] = mapped_column(default=utc_now)
     updated_at: Mapped[str] = mapped_column(default=utc_now)
 
