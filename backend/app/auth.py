@@ -5,15 +5,18 @@ import json
 import os
 import secrets
 import time
+from datetime import datetime, timedelta, timezone
 
 from fastapi import Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.models import Organizer
+from app.models import LoginFailure, Organizer
 
 COOKIE_NAME = "ia_friday_organizer"
 SESSION_HOURS = 12
+MAX_FAILED_LOGINS = 5
+LOCKOUT_MINUTES = 15
 
 
 def hash_password(password: str) -> str:
@@ -35,6 +38,27 @@ def authenticate_organizer(db: Session, email: str, password: str) -> Organizer 
     if organizer is None or not verify_password(password, organizer.password_hash):
         return None
     return organizer
+
+
+def _lockout_cutoff() -> str:
+    return (datetime.now(timezone.utc) - timedelta(minutes=LOCKOUT_MINUTES)).isoformat()
+
+
+def login_is_locked(db: Session, email: str) -> bool:
+    # Failures are stored in the database, not in memory, because serverless instances do not share memory.
+    recent = db.query(LoginFailure).filter(LoginFailure.email == email, LoginFailure.created_at >= _lockout_cutoff()).count()
+    return recent >= MAX_FAILED_LOGINS
+
+
+def record_login_failure(db: Session, email: str) -> None:
+    db.query(LoginFailure).filter(LoginFailure.created_at < _lockout_cutoff()).delete()
+    db.add(LoginFailure(email=email))
+    db.commit()
+
+
+def clear_login_failures(db: Session, email: str) -> None:
+    db.query(LoginFailure).filter(LoginFailure.email == email).delete()
+    db.commit()
 
 
 def is_organizer(db: Session, email: str) -> bool:

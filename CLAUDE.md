@@ -24,6 +24,8 @@ Aplicación web en español para las sesiones semanales internas "IA Friday": pa
 - Jurados: sin cuenta. Al identificarse reciben un `vote_token` que se guarda hasheado en `judge_vote_tokens` y viaja en la cabecera `X-Judge-Token`. Identificarse otra vez con el mismo nombre revoca el token anterior; por eso el backend exige `confirm_existing` (responde 409 "Judge name already registered" si no viene).
 - Registro de jurados: `session_evaluations.registration_open` (por defecto verdadero). Abrir la votación lo pone en falso; el organizador lo reabre con `POST /sessions/{id}/evaluation/registration`. Quien ya estaba registrado puede volver a entrar aunque esté cerrado.
 - Los votos viven en `team_scores`: una fila por sesión, jurado, equipo y criterio, con `score` y `comment`. El mismo comentario se copia en cada fila de criterio, y el reporte lo cuenta una vez por jurado y equipo (`services/evaluation_reports.py`). Los votos NO están en `sessions`.
+- Límite de intentos de login: tras 5 fallos en 15 minutos con el mismo correo, `POST /auth/login` responde 429 (tabla `login_failures`, en la base y no en memoria porque Vercel no comparte memoria entre instancias). Un login correcto reinicia el contador. Para liberar a alguien: `DELETE FROM login_failures WHERE email = '...'` en Neon.
+- Nombres de jurados: se comparan sin mayúsculas ni tildes (`internal_judge_email`). `legacy_internal_judge_email` conserva a quienes se registraron antes con la fórmula anterior.
 - Los criterios por defecto se guardan en español (`DEFAULT_CRITERIA` en `routers/evaluation.py`). `migrate_criteria_names()` en `database.py` renombra al arrancar los que quedaron en inglés.
 - Migraciones: `create_all` no agrega columnas a tablas existentes. Toda columna nueva en un modelo debe agregarse también en `migrate_added_columns()` (`database.py`) y tener una prueba en `tests/test_migrations.py`, o producción (Neon) fallará con 500.
 - Errores de la API: el backend responde en inglés y `frontend/src/api/errors.ts` los traduce al español. Mensaje nuevo en el backend = entrada nueva en ese mapa. `api()` lanza `ApiError` con `status`.
@@ -49,9 +51,9 @@ Aplicación web en español para las sesiones semanales internas "IA Friday": pa
 
 ## Estado al 2026-11-05
 
-Hecho y verificado (53 pruebas, lint y build en verde): login propio, administración de organizadores, menú ☰, ortografía, calendario de clientes con día seleccionado, rediseño de votación para celular, aviso de nombre repetido, cierre de registro de jurados, ventanas propias, mostrar contraseña, buscador de sesiones y criterios en español.
+Hecho y verificado (53 pruebas, lint y build en verde): login propio, administración de organizadores, menú ☰, ortografía, calendario de clientes con día seleccionado, rediseño de votación para celular, aviso de nombre repetido, cierre de registro de jurados, ventanas propias, mostrar contraseña, buscador de sesiones, criterios en español, límite de intentos de login, aviso de sesión expirada, aviso de éxito que se cierra solo y nombres de jurados sin tildes.
 
 Producción: el commit `1bdbb50` (último en `main`) se subió el 2026-11-05 y Vercel lo despliega solo; el tag `v1` sigue en `4882554`. Los votos sí se guardan en Neon (se confirmó con consultas SQL). Lo que parecía un fallo era buscar los votos en la tabla equivocada.
 
 Pendiente:
-- Ideas opcionales: toast con cierre automático, aviso cuando expira la sesión, límite de intentos en el login, normalizar tildes al comparar nombres de jurados ("José" y "Jose" cuentan como distintos).
+- Sin pendientes abiertos. Ideas futuras: bloqueo de login también por IP (hoy es solo por correo, así que alguien podría bloquear a propósito a un organizador durante 15 minutos), y avisos de éxito que se cierren solos en más pantallas (hoy solo Organizadores tiene uno).

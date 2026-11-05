@@ -3,6 +3,7 @@ import hmac
 import os
 import re
 import secrets
+import unicodedata
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Request
 from sqlalchemy import func
@@ -95,9 +96,27 @@ def get_evaluation_by_token(db: Session, token: str) -> SessionEvaluation:
     return evaluation
 
 
+def _name_slug(name: str, ignore_accents: bool) -> str:
+    folded = name.strip().lower()
+    if ignore_accents:
+        decomposed = unicodedata.normalize("NFKD", folded)
+        folded = "".join(char for char in decomposed if not unicodedata.combining(char))
+    return re.sub(r"[^a-z0-9]+", "-", folded).strip("-")
+
+
 def internal_judge_email(evaluation: SessionEvaluation, name: str) -> str:
-    slug = re.sub(r"[^a-z0-9]+", "-", name.strip().lower()).strip("-") or "jurado"
+    # Accents are ignored so "José" and "Jose" are the same judge.
+    slug = _name_slug(name, ignore_accents=True)
+    if not slug:
+        # Names with no latin letters (another alphabet, only symbols) must still stay distinct from each other.
+        slug = "jurado-" + hashlib.sha1(name.strip().lower().encode()).hexdigest()[:10]
     return f"judge-{evaluation.session_id}-{slug}@internal.judge"
+
+
+def legacy_internal_judge_email(evaluation: SessionEvaluation, name: str) -> str | None:
+    # Before accents were ignored, "José" was stored as "jos". Judges registered that way keep that address.
+    slug = _name_slug(name, ignore_accents=False)
+    return f"judge-{evaluation.session_id}-{slug}@internal.judge" if slug else None
 
 
 def ensure_default_criteria(db: Session, session_id: int) -> None:
@@ -341,7 +360,13 @@ def identify_judge(token: str, payload: JudgeIdentifyRequest, db: Session = Depe
     if not name:
         raise HTTPException(status_code=400, detail="Name is required")
 
-    email = payload.email.strip().lower() if payload.email else internal_judge_email(evaluation, name)
+    if payload.email:
+        email = payload.email.strip().lower()
+    else:
+        email = internal_judge_email(evaluation, name)
+        legacy_email = legacy_internal_judge_email(evaluation, name)
+        if legacy_email and legacy_email != email and db.query(Judge).filter(Judge.email == legacy_email).first():
+            email = legacy_email
     judge = db.query(Judge).filter(Judge.email == email).first()
     already_registered = (
         judge is not None

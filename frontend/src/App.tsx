@@ -58,21 +58,30 @@ export default function App() {
   const [authState, setAuthState] = useState<"checking" | "in" | "out">("checking");
   const [view, setView] = useState<AppView>("sessions");
   const [me, setMe] = useState<{ email: string; is_admin: boolean } | null>(null);
+  const [sessionExpired, setSessionExpired] = useState(false);
 
   useEffect(() => {
     if (judgeToken) return;
-    setSession(readSavedSession());
+    const saved = readSavedSession();
+    setSession(saved);
     resources.auth
       .me()
       .then((current) => {
         setMe(current);
         setAuthState("in");
       })
-      .catch(() => setAuthState("out"));
+      .catch(() => {
+        // A saved session means the organizer was working here before, so the login cookie must have expired.
+        if (saved) setSessionExpired(true);
+        setAuthState("out");
+      });
   }, [judgeToken]);
 
   useEffect(() => {
-    const expire = () => setAuthState("out");
+    const expire = () => {
+      setSessionExpired(true);
+      setAuthState("out");
+    };
     window.addEventListener("auth:expired", expire);
     return () => window.removeEventListener("auth:expired", expire);
   }, []);
@@ -110,8 +119,10 @@ export default function App() {
   if (authState === "out") {
     return (
       <LoginPage
+        notice={sessionExpired ? "Tu sesión expiró. Inicia sesión de nuevo para continuar." : undefined}
         onLogin={() => {
           resources.auth.me().then(setMe).catch(() => setMe(null));
+          setSessionExpired(false);
           setAuthState("in");
         }}
       />

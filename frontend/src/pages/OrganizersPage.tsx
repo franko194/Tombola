@@ -6,6 +6,7 @@ import { PasswordInput } from "../components/PasswordInput";
 import type { Organizer } from "../types";
 
 const MIN_PASSWORD_LENGTH = 8;
+const NOTICE_MS = 8000;
 
 export function OrganizersPage({ currentEmail }: { currentEmail: string }) {
   const [organizers, setOrganizers] = useState<Organizer[]>([]);
@@ -35,6 +36,13 @@ export function OrganizersPage({ currentEmail }: { currentEmail: string }) {
     // Messages render at the top of the page, so bring them into view after an action.
     if (notice || error) window.scrollTo({ top: 0, behavior: "smooth" });
   }, [notice, error]);
+
+  // Success messages clear themselves; errors stay until the next action.
+  useEffect(() => {
+    if (!notice) return;
+    const timer = window.setTimeout(() => setNotice(""), NOTICE_MS);
+    return () => window.clearTimeout(timer);
+  }, [notice]);
 
   async function create(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();

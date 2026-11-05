@@ -2,7 +2,7 @@ import { useState, type FormEvent } from "react";
 import { resources } from "../api/resources";
 import { PasswordInput } from "../components/PasswordInput";
 
-export function LoginPage({ onLogin }: { onLogin: () => void }) {
+export function LoginPage({ onLogin, notice }: { onLogin: () => void; notice?: string }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -29,6 +29,11 @@ export function LoginPage({ onLogin }: { onLogin: () => void }) {
           <p className="text-xs font-black uppercase tracking-[0.18em] text-teal-700">IA Friday</p>
           <h1 className="mt-1 text-2xl font-black text-slate-950">Acceso de organizadores</h1>
         </div>
+        {notice ? (
+          <p role="status" className="rounded-lg bg-amber-50 p-3 text-center font-semibold text-amber-800">
+            {notice}
+          </p>
+        ) : null}
         <form className="grid gap-4" onSubmit={submit}>
           <label className="grid gap-2 text-sm font-bold text-slate-600">
             Correo

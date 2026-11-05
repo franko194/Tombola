@@ -53,7 +53,8 @@ En produccion, `api/index.py` monta la API en `/api` y sirve los archivos de `fr
 1. El organizador envia correo y contrasena a `POST /auth/login`.
 2. La API busca un organizador activo con ese correo y compara la contrasena contra `password_hash` (`scrypt`, con comparacion en tiempo constante).
 3. Si coincide, responde con una cookie `ia_friday_organizer` firmada con `SESSION_SECRET`, `httponly`, `secure`, `SameSite=Lax`, que dura 12 horas.
-4. Cada peticion a una ruta de organizador valida la firma y la expiracion, y vuelve a consultar que el correo siga activo en `organizers`. Por eso desactivar una fila revoca el acceso de inmediato.
+4. Si un correo acumula 5 intentos fallidos en 15 minutos, `POST /auth/login` responde 429 hasta que pase la ventana. Los intentos se guardan en la base de datos y no en memoria, porque las instancias de Vercel no comparten memoria.
+5. Cada peticion a una ruta de organizador valida la firma y la expiracion, y vuelve a consultar que el correo siga activo en `organizers`. Por eso desactivar una fila revoca el acceso de inmediato.
 
 Los mensajes de error no distinguen entre correo inexistente y contrasena incorrecta.
 
@@ -81,9 +82,10 @@ Los mensajes de error no distinguen entre correo inexistente y contrasena incorr
 | `team_scores` | Puntajes de cada jurado a cada equipo por criterio. |
 | `judge_vote_tokens` | Hash del token de voto de cada jurado en cada sesion. |
 | `organizers` | Correos autorizados, contrasena (hash), estado activo. |
+| `login_failures` | Un registro por inicio de sesion fallido, para bloquear 15 minutos tras 5 intentos. |
 | `client_visits` | Visitas de clientes para el calendario. Independiente de las sesiones. |
 
-Las tablas se crean con `Base.metadata.create_all` al arrancar. Las columnas que se agregan a tablas existentes requieren un cambio manual o una migracion en `database.py`; hoy existen `migrate_assignments_allow_repeated_use_cases` y `migrate_organizers_add_password_hash`.
+Las tablas se crean con `Base.metadata.create_all` al arrancar. Las columnas que se agregan a tablas existentes requieren un cambio manual o una migracion en `database.py`; hoy existen `migrate_assignments_allow_repeated_use_cases`, `migrate_added_columns` (columnas nuevas) y `migrate_criteria_names` (criterios antiguos en ingles).
 
 ## Reglas de negocio importantes
 

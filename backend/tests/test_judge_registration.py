@@ -112,3 +112,43 @@ def test_startup_renames_criteria_saved_with_english_names():
     names = [criterion["name"] for criterion in client.get(f"/sessions/{evaluation['session']['id']}/evaluation").json()["criteria"]]
     assert "Calidad técnica" in names
     assert "Innovación" in names
+
+
+def test_names_that_differ_only_by_accents_are_the_same_judge():
+    client = organizer_client()
+    _, evaluation = prepared_evaluation(client)
+    url = f"/judge/{evaluation['token']}/identify"
+    first = client.post(url, json={"name": "José"}).json()
+
+    repeated = client.post(url, json={"name": "Jose"})
+    confirmed = client.post(url, json={"name": "JOSÉ", "confirm_existing": True})
+
+    assert repeated.status_code == 409
+    assert confirmed.json()["judge"]["id"] == first["judge"]["id"]
+
+
+def test_names_in_other_alphabets_stay_distinct():
+    client = organizer_client()
+    _, evaluation = prepared_evaluation(client)
+    url = f"/judge/{evaluation['token']}/identify"
+
+    first = client.post(url, json={"name": "山田"})
+    second = client.post(url, json={"name": "李明"})
+
+    assert first.status_code == 200
+    assert second.status_code == 200
+    assert first.json()["judge"]["id"] != second.json()["judge"]["id"]
+
+
+def test_judges_registered_before_accents_were_ignored_keep_their_address():
+    client = organizer_client()
+    session_id, evaluation = prepared_evaluation(client)
+    url = f"/judge/{evaluation['token']}/identify"
+    # Address as the previous version built it for "José": the accented letter was dropped, leaving "jos".
+    legacy_email = f"judge-{session_id}-jos@internal.judge"
+    legacy = client.post(url, json={"name": "José", "email": legacy_email}).json()
+
+    again = client.post(url, json={"name": "José", "confirm_existing": True})
+
+    assert again.status_code == 200
+    assert again.json()["judge"]["id"] == legacy["judge"]["id"]

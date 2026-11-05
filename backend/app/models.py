@@ -204,3 +204,12 @@ class ClientVisit(Base):
     visit_date: Mapped[date] = mapped_column(index=True)
     created_at: Mapped[str] = mapped_column(default=utc_now)
     updated_at: Mapped[str] = mapped_column(default=utc_now)
+
+
+class LoginFailure(Base):
+    # One row per failed organizer login. Counting recent rows per email slows down password guessing.
+    __tablename__ = "login_failures"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    email: Mapped[str] = mapped_column(index=True)
+    created_at: Mapped[str] = mapped_column(default=utc_now, index=True)

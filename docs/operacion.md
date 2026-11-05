@@ -45,6 +45,17 @@ El primer administrador se crea una sola vez con el comando de arriba y la opci�
 python -m app.set_organizer_password correo@ejemplo.com --admin
 ```
 
+## Seguridad del inicio de sesion
+
+- Despues de 5 intentos fallidos con el mismo correo, el inicio de sesion se bloquea 15 minutos para ese correo, incluso con la contrasena correcta. Un inicio de sesion correcto reinicia la cuenta. Los intentos fallidos se guardan en la tabla `login_failures`.
+- Si alguien queda bloqueado y no quiere esperar, se libera en la consola de Neon:
+
+  ```sql
+  DELETE FROM login_failures WHERE email = 'correo@ejemplo.com';
+  ```
+
+- Cuando la sesion de 12 horas expira, la app vuelve al inicio de sesion con el aviso "Tu sesión expiró".
+
 ## Quitar o restaurar el acceso
 
 El acceso se revisa en cada peticion, asi que el cambio surte efecto de inmediato:
@@ -78,7 +89,7 @@ Cada vez que reemplazas equipos o casos ya sorteados, la app guarda una copia en
 - Al identificarse, la app les entrega un token que queda guardado en su navegador. Sus votos solo se aceptan con ese token.
 - Si un jurado vuelve a identificarse con el mismo nombre desde otro dispositivo, el token anterior deja de funcionar. El jurado puede usar el boton "No soy [nombre]" para cambiar de identidad en el mismo navegador.
 - El QR debe apuntar a la URL de produccion. Si aparece la advertencia de `localhost`, configura `VITE_PUBLIC_APP_URL` o abre la app desde el dominio de Vercel.
-- Si alguien escribe un nombre que ya esta registrado en la sesion, la app pregunta si es la misma persona (por ejemplo, cambio de celular). Quien no lo es debe agregar su apellido; asi dos personas con el mismo nombre no se pisan.
+- Si alguien escribe un nombre que ya esta registrado en la sesion (sin importar mayusculas ni tildes: "José" y "jose" son el mismo), la app pregunta si es la misma persona (por ejemplo, cambio de celular). Quien no lo es debe agregar su apellido; asi dos personas con el mismo nombre no se pisan.
 - Al abrir la votacion, el registro de jurados se cierra: solo pueden volver a entrar quienes ya estaban registrados. Si llega alguien tarde, usa **Reabrir registro** en la pantalla de Evaluacion (y **Cerrar registro ahora** si quieres cerrarlo antes de abrir la votacion).
 
 Como vota un jurado desde el celular:
@@ -119,6 +130,7 @@ Las entradas se consultan en la API con `GET /sessions/{id}/draw-history`.
 | --- | --- |
 | Vuelve a aparecer la pantalla de inicio | La sesion expiro (12 horas) o la cuenta fue desactivada | Vuelve a iniciar sesion. Si no entra, revisa `active` en `organizers`. |
 | "Correo o contraseña incorrectos" | Contraseña mal escrita o organizador sin contraseña | Un administrador puede cambiarla desde **Organizadores**, o ejecuta `python -m app.set_organizer_password correo`. |
+| "Demasiados intentos fallidos" al iniciar sesion | 5 intentos fallidos con ese correo en 15 minutos | Esperar 15 minutos, o borrar sus filas de `login_failures` (ver Seguridad del inicio de sesion). |
 | Error 503 al iniciar sesion | Falta `SESSION_SECRET` en el entorno | Configurala en Vercel y redespliega. |
 | Un jurado ve "El registro de jurados ya cerró" | La votacion ya se abrio y el jurado no estaba registrado | En **Evaluacion**, pulsa **Reabrir registro**. |
 | `/api/health/db` responde SQLite | Falta `DATABASE_URL` en Vercel | Configurala y redespliega. |
