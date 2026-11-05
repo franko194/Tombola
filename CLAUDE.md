@@ -36,7 +36,7 @@ Aplicación web en español para las sesiones semanales internas "IA Friday": pa
 - `api/index.py` monta el backend en `/api` y sirve `frontend/dist`. El `requirements.txt` de la raíz debe ser una lista plana, sin `-r` ni referencias a `pyproject.toml` (eso rompió el despliegue una vez).
 - Variables en Vercel: `DATABASE_URL`, `SESSION_SECRET`, `ORGANIZER_EMAILS`, `PUBLIC_APP_URL`, `VITE_PUBLIC_APP_URL`. Tras cambiarlas hay que redesplegar.
 - Verifica la base con `https://tombola-rust.vercel.app/api/health/db`: debe decir `postgresql`.
-- Existen otros dos proyectos de Vercel conectados al mismo repositorio (`tombola-a8p3` y `tombola-yhcx`) sin `DATABASE_URL`: usan SQLite temporal y pierden los datos al redesplegar. Hay que borrarlos o configurarles la misma variable (decisión del usuario, pendiente).
+- Solo existe el proyecto `tombola`. Los proyectos duplicados `tombola-a8p3` y `tombola-yhcx` (sin `DATABASE_URL`, con SQLite temporal) se borraron el 2026-11-05. Si vuelve a aparecer otro proyecto conectado al repo sin `DATABASE_URL`, pierde los datos al redesplegar.
 
 ## Reglas de trabajo con este usuario
 
@@ -54,5 +54,4 @@ Hecho y verificado (53 pruebas, lint y build en verde): login propio, administra
 Producción: el commit `1bdbb50` (último en `main`) se subió el 2026-11-05 y Vercel lo despliega solo; el tag `v1` sigue en `4882554`. Los votos sí se guardan en Neon (se confirmó con consultas SQL). Lo que parecía un fallo era buscar los votos en la tabla equivocada.
 
 Pendiente:
-- Borrar en Vercel `tombola-a8p3` y `tombola-yhcx` (lo hace el usuario).
 - Ideas opcionales: toast con cierre automático, aviso cuando expira la sesión, límite de intentos en el login, normalizar tildes al comparar nombres de jurados ("José" y "Jose" cuentan como distintos).
